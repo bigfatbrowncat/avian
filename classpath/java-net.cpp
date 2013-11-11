@@ -31,9 +31,40 @@ Java_java_net_Socket_connect(JNIEnv* e, jclass, SOCKET sock, long addr, short po
 }
 
 extern "C" JNIEXPORT void JNICALL
+Java_java_net_Socket_connectTimeout(JNIEnv* e, jclass, SOCKET sock, long addr, short port, int timeout) {
+	connect(e, sock, addr, port, timeout);
+}
+
+extern "C" JNIEXPORT void JNICALL
 Java_java_net_Socket_bind(JNIEnv* e, jclass, SOCKET sock, long addr, short port) {
 	bind(e, sock, addr, port);
 }
+
+extern "C" JNIEXPORT void JNICALL
+Java_java_net_Socket_bindAny(JNIEnv* e, jclass, SOCKET sock) {
+	bind(e, sock, INADDR_ANY, 0);
+}
+
+extern "C" JNIEXPORT jint JNICALL
+Java_java_net_Socket_getLocalAddress(JNIEnv* e, jclass, SOCKET sock) {
+	return getLocalAddress(e, sock);
+}
+
+extern "C" JNIEXPORT jint JNICALL
+Java_java_net_Socket_getLocalPort(JNIEnv* e, jclass, SOCKET sock) {
+	return getLocalPort(e, sock);
+}
+
+extern "C" JNIEXPORT jint JNICALL
+Java_java_net_Socket_getRemoteAddress(JNIEnv* e, jclass, SOCKET sock) {
+	return getRemoteAddress(e, sock);
+}
+
+extern "C" JNIEXPORT jint JNICALL
+Java_java_net_Socket_getRemotePort(JNIEnv* e, jclass, SOCKET sock) {
+	return getRemotePort(e, sock);
+}
+
 
 extern "C" JNIEXPORT void JNICALL
 Java_java_net_Socket_abort(JNIEnv* e, jclass, SOCKET sock) {

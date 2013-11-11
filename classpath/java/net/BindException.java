@@ -10,14 +10,12 @@
 
 package java.net;
 
-import java.io.IOException;
-
-public class SocketException extends IOException {
-  public SocketException(String message) {
+public class BindException extends SocketException {
+  public BindException(String message) {
     super(message);
   }
 
-  public SocketException() {
+  public BindException() {
     super();
   }
 }

@@ -16,6 +16,14 @@ public class InetAddress {
   private final String name;
   private final int ip;
 
+  private String ipToString() {
+	byte[] addr = getAddress();
+	return (int)((addr[0] + 256) % 256) + "." + 
+	       (int)((addr[1] + 256) % 256) + "." + 
+	       (int)((addr[2] + 256) % 256) + "." + 
+	       (int)((addr[3] + 256) % 256);
+  }
+  
   private InetAddress(String name) throws UnknownHostException {
     this.name = name;
     this.ip = ipv4AddressForName(name);
@@ -23,17 +31,33 @@ public class InetAddress {
         throw new UnknownHostException(name);
     }
   }
+  
+  /**
+   * An internal constructor. Used by {@link Socket} class.
+   * @param ip
+   */
+  InetAddress(int ip) {
+	  this.name = null;
+	  this.ip = ip;
+  }
 
+  /**
+   * Returns a hostname if it was specified when creating the object. If it was not,
+   * it returns the IP-address. 
+   * <p><i>This function should possibly do a hostname lookup (using getnameinfo function), 
+   * but it isn't implemented yet</i></p>
+   * @return
+   */
   public String getHostName() {
-	return name;
+	  if (name == null) {
+		  return ipToString();
+	  } else {
+		  return name;
+	  }
   }
   
   public String getHostAddress() {
-	try {
-		return new InetAddress(name).toString();
-	} catch (UnknownHostException e) {
-		return null;	// Strange case
-	}
+	return ipToString();
   }
 
   public static InetAddress getByName(String name) throws UnknownHostException {
@@ -58,11 +82,11 @@ public class InetAddress {
   
   @Override
 	public String toString() {
-	  byte[] addr = getAddress();
-	  return (int)((addr[0] + 256) % 256) + "." + 
-	         (int)((addr[1] + 256) % 256) + "." + 
-	         (int)((addr[2] + 256) % 256) + "." + 
-	         (int)((addr[3] + 256) % 256);
+	  if (name == null) {
+		  return ipToString();
+	  } else {
+		  return name;
+	  }
 	}
   
   int getRawAddress() {

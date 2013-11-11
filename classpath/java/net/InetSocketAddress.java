@@ -35,4 +35,9 @@ public class InetSocketAddress extends SocketAddress {
   public int getPort() {
     return port;
   }
+  
+  @Override
+  public String toString() {
+	return address.toString() + ":" + port;
+  }
 }

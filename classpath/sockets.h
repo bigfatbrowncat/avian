@@ -28,6 +28,7 @@
 #else
 #  include <netdb.h>
 #  include <sys/socket.h>
+#  include <sys/ioctl.h>
 #  include <netinet/in.h>
 #  include <unistd.h>
 
@@ -36,10 +37,13 @@
 #  define INVALID_SOCKET		-1
 #  define SOCKET_ERROR			-1
 #  define closesocket(x)		close(x)
+#  define ioctlsocket(a,b,c)	ioctl(a,b,c)
 
 #  define SD_RECEIVE			SHUT_RD
 #  define SD_SEND				SHUT_WR
 #  define SD_BOTH				SHUT_RDWR
+
+#  define NO_ERROR				0
 
 #endif
 
@@ -52,9 +56,14 @@ void init(JNIEnv* ONLY_ON_WINDOWS(e));
 
 // Socket initialization
 SOCKET create(JNIEnv* e);
-void connect(JNIEnv* e, SOCKET sock, long addr, short port);
-void bind(JNIEnv* e, SOCKET sock, long addr, short port);
-SOCKET accept(JNIEnv* e, SOCKET sock, long* client_addr, short* client_port);
+bool connect(JNIEnv* e, SOCKET sock, uint32_t addr, uint16_t port);
+bool connect(JNIEnv* e, SOCKET sock, uint32_t addr, uint16_t port, int timeout);
+void bind(JNIEnv* e, SOCKET sock, uint32_t addr, uint16_t port);
+uint32_t getLocalAddress(JNIEnv* e, SOCKET sock);
+uint16_t getLocalPort(JNIEnv* e, SOCKET sock);
+uint32_t getRemoteAddress(JNIEnv* e, SOCKET sock);
+uint16_t getRemotePort(JNIEnv* e, SOCKET sock);
+SOCKET accept(JNIEnv* e, SOCKET sock, uint32_t* client_addr, uint16_t* client_port);
 
 // I/O
 void send(JNIEnv* e, SOCKET sock, const char* buff_ptr, int buff_size);

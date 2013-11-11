@@ -15,9 +15,13 @@
 
 #include "sockets.h"
 
+#include <arpa/inet.h>
+
 namespace avian {
 namespace classpath {
 namespace sockets {
+
+#define NO_TIMEOUT			-1
 
 int last_socket_error() {
 #ifdef PLATFORM_WINDOWS
@@ -48,15 +52,17 @@ SOCKET create(JNIEnv* e) {
 	SOCKET sock;
 	if (INVALID_SOCKET == (sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP))) {
 		char buf[255];
-		sprintf(buf, "Can't create a socket. System error: %d", last_socket_error());
+		sprintf(buf, "Can't create the socket. System error: %d", last_socket_error());
 		throwNew(e, "java/io/IOException", buf);
 		return 0;	// This doesn't matter cause we have risen an exception
 	}
 	return sock;
 }
 
-void connect(JNIEnv* e, SOCKET sock, long addr, short port) {
+bool connect(JNIEnv* e, SOCKET sock, uint32_t addr, uint16_t port) {
 	sockaddr_in adr;
+	memset(&adr, 0, sizeof(sockaddr_in));
+
 	adr.sin_family = AF_INET;
 #ifdef PLATFORM_WINDOWS
 	adr.sin_addr.S_un.S_addr = htonl(addr);
@@ -68,14 +74,79 @@ void connect(JNIEnv* e, SOCKET sock, long addr, short port) {
 	if (SOCKET_ERROR == ::connect(sock, (sockaddr* )&adr, sizeof(adr)))
 	{
 		char buf[255];
-		sprintf(buf, "Can't connect a socket. System error: %d", last_socket_error());
-		throwNew(e, "java/io/IOException", buf);
-		return;
+		char address_text[INET_ADDRSTRLEN];
+		inet_ntop(AF_INET, &(adr.sin_addr), address_text, INET_ADDRSTRLEN);
+
+		sprintf(buf, "Can't connect the socket to address %s:%d. System error: %d", address_text, port, last_socket_error());
+		throwNew(e, "java/net/SocketException", buf);
+		return false;
 	}
+	return true;
 }
 
-void bind(JNIEnv* e, SOCKET sock, long addr, short port) {
+bool connect(JNIEnv* e, SOCKET sock, uint32_t addr, uint16_t port, int timeout) {
+
+	if (timeout > 0) {
+		// Setting the socket to non-blocking mode
+		uint32_t mode = 1;	// Non-blocking mode
+		int res = ioctlsocket(sock, FIONBIO, &mode);
+		if (NO_ERROR != res) {
+			char buf[255];
+			sprintf(buf, "Can't change the socket to non-blocking mode. System error: %d", last_socket_error());
+			throwNew(e, "java/io/IOException", buf);
+			return false;
+		}
+	}
+
+	// Initiating connection
+	if (!connect(e, sock, addr, port)) {
+		return false;
+	}
+
+	if (timeout > 0) {
+		// Setting the socket to blocking mode again
+		uint32_t mode = 0;
+		int res = ioctlsocket(sock, FIONBIO, &mode);
+		if (NO_ERROR != res) {
+			char buf[255];
+			sprintf(buf, "Can't change the socket to blocking mode. System error: %d", last_socket_error());
+			throwNew(e, "java/io/IOException", buf);
+			return false;
+		}
+
+		// Waiting for the socket to connect (we will check if we can write to the socket)
+		timeval timeVal;
+		timeVal.tv_sec = timeout / 1000;
+		int usec = (timeout % 1000) * 1000;
+		timeVal.tv_usec = usec;
+
+		fd_set writefds;
+		FD_ZERO(&writefds);
+		FD_SET(sock, &writefds);
+		if (SOCKET_ERROR == select(sock + 1, NULL, &writefds, NULL, &timeVal)) {
+			char buf[255];
+			sprintf(buf, "Can't wait for the socket to be writable. System error: %d", last_socket_error());
+			throwNew(e, "java/io/IOException", buf);
+			return false;
+		}
+
+		if (FD_ISSET(sock, &writefds)) {
+			return true;
+		} else {
+			char buf[255];
+			sprintf(buf, "Connection timeout. System error: %d", last_socket_error());
+			throwNew(e, "java/net/SocketTimeoutException", buf);
+			return false;
+		}
+	}
+
+	return true;
+}
+
+void bind(JNIEnv* e, SOCKET sock, uint32_t addr, uint16_t port) {
 	sockaddr_in adr;
+	memset(&adr, 0, sizeof(sockaddr_in));
+
 	adr.sin_family = AF_INET;
 #ifdef PLATFORM_WINDOWS
 	adr.sin_addr.S_un.S_addr = htonl(addr);
@@ -84,18 +155,80 @@ void bind(JNIEnv* e, SOCKET sock, long addr, short port) {
 #endif
 	adr.sin_port = htons (port);
 
-	if (SOCKET_ERROR == ::bind(sock, (sockaddr* )&adr, sizeof(adr)))
+	if (SOCKET_ERROR == ::bind(sock, (sockaddr* )&adr, sizeof(sockaddr)))
 	{
 		char buf[255];
-		sprintf(buf, "Can't bind a socket. System error: %d", last_socket_error());
-		throwNew(e, "java/io/IOException", buf);
+		char address_text[INET_ADDRSTRLEN];
+		inet_ntop(AF_INET, &(adr.sin_addr), address_text, INET_ADDRSTRLEN);
+
+		sprintf(buf, "Can't bind the socket to address %s:%d. System error: %d", address_text, port, last_socket_error());
+		throwNew(e, "java/net/BindException", buf);
 		return;
 	}
 }
 
-SOCKET accept(JNIEnv* e, SOCKET sock, long* client_addr, short* client_port) {
+uint32_t getLocalAddress(JNIEnv* e, SOCKET sock) {
 	sockaddr_in adr;
-	SOCKET client_socket = ::accept(sock, (sockaddr* )&adr, NULL);
+	socklen_t adrlen;
+	if (SOCKET_ERROR == getsockname(sock, (sockaddr* )&adr, &adrlen)) {
+		char buf[255];
+		sprintf(buf, "Can't get the socket local address. System error: %d", last_socket_error());
+		throwNew(e, "java/io/IOException", buf);
+		return 0;
+	}
+#ifdef PLATFORM_WINDOWS
+	return ntohl(adr.sin_addr.S_un.S_addr);
+#else
+	return ntohl(adr.sin_addr.s_addr);
+#endif
+}
+
+uint16_t getLocalPort(JNIEnv* e, SOCKET sock) {
+	sockaddr_in adr;
+	socklen_t adrlen;
+	if (SOCKET_ERROR == getsockname(sock, (sockaddr* )&adr, &adrlen)) {
+		char buf[255];
+		sprintf(buf, "Can't get the socket local port. System error: %d", last_socket_error());
+		throwNew(e, "java/io/IOException", buf);
+		return 0;
+	}
+	return ntohs(adr.sin_port);
+}
+
+uint32_t getRemoteAddress(JNIEnv* e, SOCKET sock) {
+	sockaddr_in adr;
+	socklen_t adrlen;
+	if (SOCKET_ERROR == getpeername(sock, (sockaddr* )&adr, &adrlen)) {
+		char buf[255];
+		sprintf(buf, "Can't get the socket remote address. System error: %d", last_socket_error());
+		throwNew(e, "java/io/IOException", buf);
+		return 0;
+	}
+#ifdef PLATFORM_WINDOWS
+	return ntohl(adr.sin_addr.S_un.S_addr);
+#else
+	return ntohl(adr.sin_addr.s_addr);
+#endif
+}
+
+uint16_t getRemotePort(JNIEnv* e, SOCKET sock) {
+	sockaddr_in adr;
+	socklen_t adrlen;
+	if (SOCKET_ERROR == getpeername(sock, (sockaddr* )&adr, &adrlen)) {
+		char buf[255];
+		sprintf(buf, "Can't get the socket remote port. System error: %d", last_socket_error());
+		throwNew(e, "java/io/IOException", buf);
+		return 0;
+	}
+	return ntohs(adr.sin_port);
+}
+
+SOCKET accept(JNIEnv* e, SOCKET sock, uint32_t* client_addr, uint16_t* client_port) {
+	sockaddr_in adr;
+	socklen_t adrlen;
+	memset(&adr, 0, sizeof(sockaddr_in));
+
+	SOCKET client_socket = ::accept(sock, (sockaddr* )&adr, &adrlen);
 	if (INVALID_SOCKET == client_socket) {
 		char buf[255];
 		sprintf(buf, "Can't accept the incoming connection. System error: %d", last_socket_error());
