@@ -152,6 +152,11 @@ public class Socket implements Closeable, AutoCloseable {
 	private InetSocketAddress localAddress;
 	private InetSocketAddress remoteAddress;
 	
+	/**
+	 * This function fills in the local address field (if it is empty) using
+	 * data from the native socket API
+	 * @throws IOException
+	 */
 	private void retrieveLocalAddress() throws IOException {
 		if (localAddress == null) {
 			int gotLocalAddress = getLocalAddress(sock);
@@ -201,7 +206,12 @@ public class Socket implements Closeable, AutoCloseable {
 		if (port < 0 || port > 65535) {
 			throw new IllegalArgumentException("port should be between 0 and 65535");
 		}
+		
+		// No explicit binding, just connect
 		connect(sock, address.getRawAddress(), (short)port);
+		remoteAddress = new InetSocketAddress(address, port);
+		
+		// ...and get implicit binding data 
 		retrieveLocalAddress();
 	}
 	
@@ -223,9 +233,11 @@ public class Socket implements Closeable, AutoCloseable {
 			throw new IllegalArgumentException("localPort should be between 0 and 65535");
 		}
 
+		// First bind
 		bind(new InetSocketAddress(localAddr, localPort));
 		localAddress = new InetSocketAddress(localAddr, localPort);
 		
+		// ...then connect
 		InetAddress address = InetAddress.getByName(host);
 		connect(sock,  address.getRawAddress(), (short)port);
 		remoteAddress = new InetSocketAddress(address, port);
@@ -244,7 +256,8 @@ public class Socket implements Closeable, AutoCloseable {
 	 * @throws IllegalArgumentException if <code>port</code> is outside <code>[0..65535]</code>
 	 */
 	public Socket(InetAddress address, int port, InetAddress localAddr, int localPort) throws IOException {
-		this(address, port);
+		this();
+		if (address == null) throw new NullPointerException("address can't be null");
 		if (port < 0 || port > 65535) {
 			throw new IllegalArgumentException("port should be between 0 and 65535");
 		}
@@ -252,7 +265,13 @@ public class Socket implements Closeable, AutoCloseable {
 			throw new IllegalArgumentException("localPort should be between 0 and 65535");
 		}
 
+		// First bind
 		bind(new InetSocketAddress(localAddr, localPort));
+		localAddress = new InetSocketAddress(localAddr, localPort);
+		
+		// ...then connect
+		connect(sock, address.getRawAddress(), (short)port);
+		remoteAddress = new InetSocketAddress(address, port);
 	}
 	
 	/**
@@ -267,14 +286,18 @@ public class Socket implements Closeable, AutoCloseable {
 			throw new IllegalArgumentException("endpoint can't be null");
 		}
 		
-		if (!(endpoint instanceof InetSocketAddress)) {
-			throw new IllegalArgumentException("endpoint isn't InetSocketAddress");
+		if (endpoint instanceof InetSocketAddress) {
+	
+			// First connect
+			InetSocketAddress inetSocketAddress = (InetSocketAddress)endpoint;
+			connect(sock, inetSocketAddress.getAddress().getRawAddress(), (short)(inetSocketAddress.getPort()));
+			remoteAddress = inetSocketAddress;
+	
+			// ...then get binding data (if no explicit binding is done before)
+			retrieveLocalAddress();
+		} else {
+			throw new IllegalArgumentException("only InetSocketAddress supported so far");
 		}
-
-		InetSocketAddress inetSocketAddress = (InetSocketAddress)endpoint;
-		connect(sock, inetSocketAddress.getAddress().getRawAddress(), (short)(inetSocketAddress.getPort()));
-		retrieveLocalAddress();
-		remoteAddress = inetSocketAddress;
 	}
 	
 	/**
@@ -285,19 +308,25 @@ public class Socket implements Closeable, AutoCloseable {
 	 * @throws IOException in the case of a connection problem
 	 * @throws SocketTimeoutException if the socket can't connect before <code>timeout</code> expires. 
 	 * @throws IllegalArgumentException if endpoint is <code>null</code> or it's a {@link SocketAddress} 
-	 * subclass that's not supported by this socket
+	 * subclass that's not supported by this socket. Or if <code>timeout < 0</code>
 	 */
 	public void connect(SocketAddress endpoint, int timeout) throws IOException, SocketTimeoutException {
 		if (endpoint == null) {
 			throw new IllegalArgumentException("endpoint can't be null");
 		}
 		
+		if (timeout < 0) {
+			throw new IllegalArgumentException("timeout should be 0 or positive");
+		}
+		
 		if (endpoint instanceof InetSocketAddress) {
+			// First connect
 			InetSocketAddress inetSocketAddress = (InetSocketAddress)endpoint;
 			connectTimeout(sock, inetSocketAddress.getAddress().getRawAddress(), (short)(inetSocketAddress.getPort()), timeout);
-			retrieveLocalAddress();
 			remoteAddress = inetSocketAddress;
 			
+			// ...then get binding data (if no explicit binding is done before)
+			retrieveLocalAddress();
 
 		} else {
 			throw new IllegalArgumentException("only InetSocketAddress supported so far");

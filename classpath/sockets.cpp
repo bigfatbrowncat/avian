@@ -15,7 +15,9 @@
 
 #include "sockets.h"
 
-#include <arpa/inet.h>
+#ifndef PLATFORM_WINDOWS
+#	include <arpa/inet.h>
+#endif
 
 namespace avian {
 namespace classpath {
@@ -74,9 +76,12 @@ bool connect(JNIEnv* e, SOCKET sock, uint32_t addr, uint16_t port) {
 	if (SOCKET_ERROR == ::connect(sock, (sockaddr* )&adr, sizeof(adr)))
 	{
 		char buf[255];
+#ifdef PLATFORM_WINDOWS
+		char* address_text = inet_ntoa(adr.sin_addr);
+#else
 		char address_text[INET_ADDRSTRLEN];
 		inet_ntop(AF_INET, &(adr.sin_addr), address_text, INET_ADDRSTRLEN);
-
+#endif
 		sprintf(buf, "Can't connect the socket to address %s:%d. System error: %d", address_text, port, last_socket_error());
 		throwNew(e, "java/net/SocketException", buf);
 		return false;
@@ -88,7 +93,7 @@ bool connect(JNIEnv* e, SOCKET sock, uint32_t addr, uint16_t port, int timeout) 
 
 	if (timeout > 0) {
 		// Setting the socket to non-blocking mode
-		uint32_t mode = 1;	// Non-blocking mode
+		u_long mode = 1;	// Non-blocking mode
 		int res = ioctlsocket(sock, FIONBIO, &mode);
 		if (NO_ERROR != res) {
 			char buf[255];
@@ -105,7 +110,7 @@ bool connect(JNIEnv* e, SOCKET sock, uint32_t addr, uint16_t port, int timeout) 
 
 	if (timeout > 0) {
 		// Setting the socket to blocking mode again
-		uint32_t mode = 0;
+		u_long mode = 0;
 		int res = ioctlsocket(sock, FIONBIO, &mode);
 		if (NO_ERROR != res) {
 			char buf[255];
@@ -158,8 +163,12 @@ void bind(JNIEnv* e, SOCKET sock, uint32_t addr, uint16_t port) {
 	if (SOCKET_ERROR == ::bind(sock, (sockaddr* )&adr, sizeof(sockaddr)))
 	{
 		char buf[255];
+#ifdef PLATFORM_WINDOWS
+		char* address_text = inet_ntoa(adr.sin_addr);
+#else
 		char address_text[INET_ADDRSTRLEN];
 		inet_ntop(AF_INET, &(adr.sin_addr), address_text, INET_ADDRSTRLEN);
+#endif
 
 		sprintf(buf, "Can't bind the socket to address %s:%d. System error: %d", address_text, port, last_socket_error());
 		throwNew(e, "java/net/BindException", buf);
@@ -169,7 +178,7 @@ void bind(JNIEnv* e, SOCKET sock, uint32_t addr, uint16_t port) {
 
 uint32_t getLocalAddress(JNIEnv* e, SOCKET sock) {
 	sockaddr_in adr;
-	socklen_t adrlen;
+	socklen_t adrlen = sizeof(adr);
 	if (SOCKET_ERROR == getsockname(sock, (sockaddr* )&adr, &adrlen)) {
 		char buf[255];
 		sprintf(buf, "Can't get the socket local address. System error: %d", last_socket_error());
@@ -185,7 +194,7 @@ uint32_t getLocalAddress(JNIEnv* e, SOCKET sock) {
 
 uint16_t getLocalPort(JNIEnv* e, SOCKET sock) {
 	sockaddr_in adr;
-	socklen_t adrlen;
+	socklen_t adrlen = sizeof(adr);
 	if (SOCKET_ERROR == getsockname(sock, (sockaddr* )&adr, &adrlen)) {
 		char buf[255];
 		sprintf(buf, "Can't get the socket local port. System error: %d", last_socket_error());
@@ -197,7 +206,7 @@ uint16_t getLocalPort(JNIEnv* e, SOCKET sock) {
 
 uint32_t getRemoteAddress(JNIEnv* e, SOCKET sock) {
 	sockaddr_in adr;
-	socklen_t adrlen;
+	socklen_t adrlen = sizeof(adr);
 	if (SOCKET_ERROR == getpeername(sock, (sockaddr* )&adr, &adrlen)) {
 		char buf[255];
 		sprintf(buf, "Can't get the socket remote address. System error: %d", last_socket_error());
@@ -213,7 +222,7 @@ uint32_t getRemoteAddress(JNIEnv* e, SOCKET sock) {
 
 uint16_t getRemotePort(JNIEnv* e, SOCKET sock) {
 	sockaddr_in adr;
-	socklen_t adrlen;
+	socklen_t adrlen = sizeof(adr);
 	if (SOCKET_ERROR == getpeername(sock, (sockaddr* )&adr, &adrlen)) {
 		char buf[255];
 		sprintf(buf, "Can't get the socket remote port. System error: %d", last_socket_error());

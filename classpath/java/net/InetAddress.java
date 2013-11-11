@@ -85,7 +85,7 @@ public class InetAddress {
 	  if (name == null) {
 		  return ipToString();
 	  } else {
-		  return name;
+		  return name + "/" + ipToString();
 	  }
 	}
   

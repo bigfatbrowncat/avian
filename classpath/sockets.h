@@ -24,6 +24,8 @@
 #ifdef PLATFORM_WINDOWS
 #  include <winsock2.h>
 
+#  define socklen_t				int
+
 #  define ONLY_ON_WINDOWS(x)	x
 #else
 #  include <netdb.h>
@@ -37,7 +39,7 @@
 #  define INVALID_SOCKET		-1
 #  define SOCKET_ERROR			-1
 #  define closesocket(x)		close(x)
-#  define ioctlsocket(a,b,c)	ioctl(a,b,c)
+#  define ioctlsocket(A,B,C)	ioctl(A,B,(uint32_t*)C)
 
 #  define SD_RECEIVE			SHUT_RD
 #  define SD_SEND				SHUT_WR
