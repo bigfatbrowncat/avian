@@ -17,154 +17,11 @@ import java.io.OutputStream;
 
 public class Socket implements Closeable, AutoCloseable {
 	
-	private static final int BUFFER_SIZE = 65535;
-	
-	/**
-	 * This method is called from all routines that depend on winsock in windows,
-	 * so it has public visibility
-	 * @throws IOException
-	 */
-	public static native void init() throws IOException;
-	
-	/**
-	 * Creates the native socket object
-	 * @return Handle to the native object
-	 * @throws IOException
-	 */
-	private static native /* SOCKET */long create() throws IOException;
-	
-	/**
-	 * Connects the native socket object to an address:port
-	 * @param sock Native socket handler
-	 * @param addr Address to connect to
-	 * @param port Port to connect to
-	 * @throws IOException
-	 */
-	private static native void connect(/* SOCKET */long sock, long addr, short port) throws IOException;
-	private static native void connectTimeout(/* SOCKET */long sock, long addr, short port, int timeout) throws IOException, SocketTimeoutException;
-	private static native void bind(/* SOCKET */long sock, long addr, short port) throws IOException;
-	private static native void bindAny(/* SOCKET */long sock) throws IOException;
+	private SocketImpl socketImpl = new DefaultSocketImpl();
 
-	private static native int getLocalAddress(/* SOCKET */long sock) throws IOException;
-	private static native int getLocalPort(/* SOCKET */long sock) throws IOException;
-	private static native int getRemoteAddress(/* SOCKET */long sock) throws IOException;
-	private static native int getRemotePort(/* SOCKET */long sock) throws IOException;
-
-	
-	private static native void send(/* SOCKET */long sock, byte[] buffer, int start_pos, int count) throws IOException;
-	private static native int recv(/* SOCKET */long sock, byte[] buffer, int start_pos, int count) throws IOException;
-	
-	private static native void abort(/* SOCKET */long sock);
-	private static native void close(/* SOCKET */long sock);
-	private static native void closeOutput(/* SOCKET */long sock);
-	private static native void closeInput(/* SOCKET */long sock);
-	
-	private class SocketInputStream extends InputStream {
-
-		private boolean closed = false;
-		
-		@Override
-		public void close() throws IOException {
-			if (!closed) {
-				closeInput(sock);
-				closed = true;
-			}
-			super.close();
-		}
-		
-		@Override
-		protected void finalize() throws Throwable {
-			close();
-			super.finalize();
-		}
-		
-		@Override
-		public int read() throws IOException {
-			byte[] buffer = new byte[1];
-			int size = recv(sock, buffer, 0, 1);
-			if (size == 0) {
-				return -1;
-			}
-			return buffer[0];
-		}
-		
-		@Override
-		public int read(byte[] buffer) throws IOException {
-			int fullSize = buffer.length;
-			int index = 0;
-			int size;
-			do {
-				size = recv(sock, buffer, index, Math.min(fullSize, Socket.BUFFER_SIZE));
-				fullSize -= size;
-				index += size;
-			} while (fullSize != 0 && size != 0);
-			return index;
-		}
-
-		
-	}
-	
-	private class SocketOutputStream extends OutputStream {
-
-		private boolean closed = false;
-		
-		@Override
-		public void close() throws IOException {
-			if (!closed) {
-				closeOutput(sock);
-				closed = true;
-			}
-			super.close();
-		}
-		
-		@Override
-		protected void finalize() throws Throwable {
-			close();
-			super.finalize();
-		}
-		
-		@Override
-		public void write(int c) throws IOException {
-			byte[] res = new byte[1];
-			res[0] = (byte)c;
-			send(sock, res, 0, 1);
-		}
-		
-		@Override
-		public void write(byte[] buffer) throws IOException {
-			int fullSize = buffer.length;
-			int index = 0;
-			int size;
-			do {
-				size = Math.min(fullSize, Socket.BUFFER_SIZE);
-				send(sock, buffer, index, size);
-				fullSize -= size;
-				index += size;
-			} while (fullSize != 0 && size != 0);
-		}
-
-	}
-
-	private long sock;
-	private InputStream inputStream;
-	private OutputStream outputStream;
-	
 	private InetSocketAddress localAddress;
 	private InetSocketAddress remoteAddress;
-	
-	/**
-	 * This function fills in the local address field (if it is empty) using
-	 * data from the native socket API
-	 * @throws IOException
-	 */
-	private void retrieveLocalAddress() throws IOException {
-		if (localAddress == null) {
-			int gotLocalAddress = getLocalAddress(sock);
-			int gotLocalPort = getLocalPort(sock);
-			localAddress = new InetSocketAddress(new InetAddress(gotLocalAddress), gotLocalPort);
-		}
-	}
-	
+
 	/**
 	 * Creates a new empty unconnected socket. Use <code>connect</code> to connnect it.
 	 * <p><em>The signature of this method differs from JDK. In JDK this constructor
@@ -174,10 +31,7 @@ public class Socket implements Closeable, AutoCloseable {
 	 * @throws IOException in the case of a socket creation error
 	 */
 	public Socket() throws IOException {
-		Socket.init();
-		sock = create();
-		inputStream = new SocketInputStream();
-		outputStream = new SocketOutputStream();
+		socketImpl = new DefaultSocketImpl();
 	}
 	
 	/**
@@ -189,7 +43,7 @@ public class Socket implements Closeable, AutoCloseable {
 	 * @throws IllegalArgumentException if port number is outside [0..65535]
 	 */
 	public Socket(String host, int port) throws UnknownHostException, IOException {
-		this(InetAddress.getByName(host), port);
+		socketImpl = new DefaultSocketImpl(host, port);
 	}
 	
 	/**
@@ -201,18 +55,12 @@ public class Socket implements Closeable, AutoCloseable {
 	 * @throws NullPointerException if address is null
 	 */
 	public Socket(InetAddress address, int port) throws IOException {
-		this();
-		if (address == null) throw new NullPointerException("address can't be null");
-		if (port < 0 || port > 65535) {
-			throw new IllegalArgumentException("port should be between 0 and 65535");
-		}
-		
-		// No explicit binding, just connect
-		connect(sock, address.getRawAddress(), (short)port);
+		socketImpl = new DefaultSocketImpl(address, port);
 		remoteAddress = new InetSocketAddress(address, port);
-		
-		// ...and get implicit binding data 
-		retrieveLocalAddress();
+		if (socketImpl instanceof DefaultSocketImpl) {
+			if (localAddress == null) 
+				localAddress = ((DefaultSocketImpl)socketImpl).getLocalAddress();
+		}
 	}
 	
 	/**
@@ -225,23 +73,10 @@ public class Socket implements Closeable, AutoCloseable {
 	 * @throws IllegalArgumentException if port number is outside [0..65535]
 	 */
 	public Socket(String host, int port, InetAddress localAddr, int localPort) throws UnknownHostException, IOException {
-		this();
-		if (port < 0 || port > 65535) {
-			throw new IllegalArgumentException("port should be between 0 and 65535");
-		}
-		if (localPort < 0 || localPort > 65535) {
-			throw new IllegalArgumentException("localPort should be between 0 and 65535");
-		}
-
-		// First bind
-		bind(new InetSocketAddress(localAddr, localPort));
-		localAddress = new InetSocketAddress(localAddr, localPort);
-		
-		// ...then connect
+		socketImpl = new DefaultSocketImpl(host, port, localAddr, localPort);
 		InetAddress address = InetAddress.getByName(host);
-		connect(sock,  address.getRawAddress(), (short)port);
+		localAddress = new InetSocketAddress(localAddr, localPort);
 		remoteAddress = new InetSocketAddress(address, port);
-
 	}
 
 	/**
@@ -256,21 +91,8 @@ public class Socket implements Closeable, AutoCloseable {
 	 * @throws IllegalArgumentException if <code>port</code> is outside <code>[0..65535]</code>
 	 */
 	public Socket(InetAddress address, int port, InetAddress localAddr, int localPort) throws IOException {
-		this();
-		if (address == null) throw new NullPointerException("address can't be null");
-		if (port < 0 || port > 65535) {
-			throw new IllegalArgumentException("port should be between 0 and 65535");
-		}
-		if (localPort < 0 || localPort > 65535) {
-			throw new IllegalArgumentException("localPort should be between 0 and 65535");
-		}
-
-		// First bind
-		bind(new InetSocketAddress(localAddr, localPort));
+		socketImpl = new DefaultSocketImpl(address, port, localAddr, localPort);
 		localAddress = new InetSocketAddress(localAddr, localPort);
-		
-		// ...then connect
-		connect(sock, address.getRawAddress(), (short)port);
 		remoteAddress = new InetSocketAddress(address, port);
 	}
 	
@@ -282,21 +104,12 @@ public class Socket implements Closeable, AutoCloseable {
 	 * subclass that's not supported by this socket
 	 */
 	public void connect(SocketAddress endpoint) throws IOException {
-		if (endpoint == null) {
-			throw new IllegalArgumentException("endpoint can't be null");
-		}
-		
-		if (endpoint instanceof InetSocketAddress) {
-	
-			// First connect
+		socketImpl.connect(((InetSocketAddress)endpoint).getAddress(), ((InetSocketAddress)endpoint).getPort());
+		if (socketImpl instanceof DefaultSocketImpl) {
 			InetSocketAddress inetSocketAddress = (InetSocketAddress)endpoint;
-			connect(sock, inetSocketAddress.getAddress().getRawAddress(), (short)(inetSocketAddress.getPort()));
 			remoteAddress = inetSocketAddress;
-	
-			// ...then get binding data (if no explicit binding is done before)
-			retrieveLocalAddress();
-		} else {
-			throw new IllegalArgumentException("only InetSocketAddress supported so far");
+			if (localAddress == null) 
+				localAddress = ((DefaultSocketImpl)socketImpl).getLocalAddress();
 		}
 	}
 	
@@ -311,27 +124,13 @@ public class Socket implements Closeable, AutoCloseable {
 	 * subclass that's not supported by this socket. Or if <code>timeout < 0</code>
 	 */
 	public void connect(SocketAddress endpoint, int timeout) throws IOException, SocketTimeoutException {
-		if (endpoint == null) {
-			throw new IllegalArgumentException("endpoint can't be null");
-		}
-		
-		if (timeout < 0) {
-			throw new IllegalArgumentException("timeout should be 0 or positive");
-		}
-		
-		if (endpoint instanceof InetSocketAddress) {
-			// First connect
+		socketImpl.connect(endpoint, timeout);
+		if (socketImpl instanceof DefaultSocketImpl) {
 			InetSocketAddress inetSocketAddress = (InetSocketAddress)endpoint;
-			connectTimeout(sock, inetSocketAddress.getAddress().getRawAddress(), (short)(inetSocketAddress.getPort()), timeout);
 			remoteAddress = inetSocketAddress;
-			
-			// ...then get binding data (if no explicit binding is done before)
-			retrieveLocalAddress();
-
-		} else {
-			throw new IllegalArgumentException("only InetSocketAddress supported so far");
+			if (localAddress == null) 
+				localAddress = ((DefaultSocketImpl)socketImpl).getLocalAddress();
 		}
-		
 	}
 	
 	/**
@@ -346,16 +145,12 @@ public class Socket implements Closeable, AutoCloseable {
 		if (localAddress != null) {
 			throw new SocketException("Socket already bound to " + localAddress.toString());
 		}
+		
+		socketImpl.bind(((InetSocketAddress)bindpoint).getAddress(), ((InetSocketAddress)bindpoint).getPort());
 
-		if (bindpoint == null) {
-			bindAny(sock);
-		}
 		if (bindpoint instanceof InetSocketAddress) {
 			InetSocketAddress inetBindpoint = (InetSocketAddress)bindpoint;
-			bind(sock, inetBindpoint.getAddress().getRawAddress(), (short) inetBindpoint.getPort());
 			localAddress = inetBindpoint;
-		} else {
-			throw new IllegalArgumentException("only InetSocketAddress supported so far");
 		}
 	}
 	
@@ -366,11 +161,7 @@ public class Socket implements Closeable, AutoCloseable {
 	 * @return the address to which this socket is connected
 	 */
 	public InetAddress getInetAddress() {
-		if (remoteAddress != null) {
-			return remoteAddress.getAddress();
-		} else {
-			return null;
-		}
+		return socketImpl.getInetAddress();
 	}
 
 	/**
@@ -384,11 +175,7 @@ public class Socket implements Closeable, AutoCloseable {
 	 * @return the address to which this socket is bound or <code>null</code> if it isn't bound yet
 	 */
 	public InetAddress getLocalAddress() {
-		if (localAddress != null) {
-			return localAddress.getAddress();
-		} else {
-			return null;
-		}
+		return localAddress.getAddress();
 	}
 	
 	/**
@@ -398,11 +185,7 @@ public class Socket implements Closeable, AutoCloseable {
 	 * @return the port to which this socket is connected, or 0 if it's not connected yet
 	 */
 	public int getPort() {
-		if (remoteAddress != null) {
-			return remoteAddress.getPort();
-		} else {
-			return 0;
-		}
+		return socketImpl.getPort();
 	}
 	
 	/**
@@ -412,11 +195,7 @@ public class Socket implements Closeable, AutoCloseable {
 	 * @return the port to which this socket is bound, or -1 if it's not bound yet
 	 */
 	public int getLocalPort() {
-		if (localAddress != null) {
-			return localAddress.getPort();
-		} else {
-			return -1;
-		}
+		return socketImpl.getLocalPort();
 	}
 	
 	/**
@@ -432,7 +211,7 @@ public class Socket implements Closeable, AutoCloseable {
 	 * @return the local address or <code>null</code> if the socket hasn't been bound
 	 */
 	public SocketAddress getLocalSocketAddress() {
-		return localAddress;
+		return new InetSocketAddress(socketImpl.getInetAddress(), socketImpl.getLocalPort());
 	}
 
 	/**
@@ -440,7 +219,7 @@ public class Socket implements Closeable, AutoCloseable {
 	 * @return the input stream of the socket.
 	 */
 	public InputStream getInputStream() {
-		return inputStream;
+		return socketImpl.getInputStream();
 	}
 	
 	/**
@@ -448,22 +227,22 @@ public class Socket implements Closeable, AutoCloseable {
 	 * @return the output stream of the socket.
 	 */
 	public OutputStream getOutputStream() {
-		return outputStream;
+		return socketImpl.getOutputStream();
 	}
 
 	public void setTcpNoDelay(boolean on) throws SocketException {}
 
 	@Override
 	public void close() throws IOException {
-		close(sock);
+		socketImpl.close();
 	}
 	
 	public void shutdownInput() throws IOException {
-		inputStream.close();
+		socketImpl.shutdownInput();
 	}
 	
 	public void shutdownOutput() throws IOException {
-		outputStream.close();
+		socketImpl.shutdownOutput();
 	}
 	
 	

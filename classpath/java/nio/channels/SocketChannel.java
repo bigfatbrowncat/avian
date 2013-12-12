@@ -11,6 +11,7 @@
 package java.nio.channels;
 
 import java.io.IOException;
+import java.net.DefaultSocketImpl;
 import java.net.SocketException;
 import java.net.SocketAddress;
 import java.net.InetSocketAddress;
@@ -28,7 +29,7 @@ public class SocketChannel extends SelectableChannel
   boolean blocking = true;
 
   public static SocketChannel open() throws IOException {
-    Socket.init();
+    DefaultSocketImpl.init();
 
     return new SocketChannel();
   }

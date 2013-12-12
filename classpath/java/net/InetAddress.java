@@ -62,7 +62,7 @@ public class InetAddress {
 
   public static InetAddress getByName(String name) throws UnknownHostException {
     try {
-      Socket.init();
+      DefaultSocketImpl.init();
       return new InetAddress(name);
     } catch (IOException e) {
       UnknownHostException uhe = new UnknownHostException(name);
