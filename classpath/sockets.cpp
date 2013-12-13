@@ -235,11 +235,13 @@ uint16_t getRemotePort(JNIEnv* e, SOCKET sock) {
 
 
 bool listen(JNIEnv* e, SOCKET sock, int backlog) {
-	if (SOCKET_ERROR == listen(sock, backlog)) {
+	if (SOCKET_ERROR == ::listen(sock, backlog)) {
 		char buf[255];
 		sprintf(buf, "Can't set the socket to the listening state. System error: %d", last_socket_error());
 		throwNew(e, "java/io/IOException", buf);
 		return false;
+	} else {
+		return true;
 	}
 }
 
