@@ -12,6 +12,7 @@ package java.nio.channels;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.net.DefaultSocketImpl;
 import java.net.SocketAddress;
 import java.net.InetSocketAddress;
 import java.net.ProtocolFamily;
@@ -54,7 +55,7 @@ public class DatagramChannel extends SelectableChannel
     throws IOException
   {
     if (family.equals(StandardProtocolFamily.INET)) {
-      Socket.init();
+      DefaultSocketImpl.init();
     
       return new DatagramChannel();
     } else {

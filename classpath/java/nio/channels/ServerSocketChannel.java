@@ -12,6 +12,7 @@ package java.nio.channels;
 
 import java.io.IOException;
 
+import java.net.DefaultSocketImpl;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.net.ServerSocket;
@@ -52,7 +53,11 @@ public class ServerSocketChannel extends SelectableChannel {
   }
 
   public ServerSocket socket() {
-    return new Handle();
+	try {
+		return new Handle();
+	} catch (IOException ioex) {
+		return null;
+	}
   }
 
   private int doAccept() throws IOException {
@@ -67,13 +72,17 @@ public class ServerSocketChannel extends SelectableChannel {
   }
 
   private int doListen(String host, int port) throws IOException {
-    Socket.init();
+	  DefaultSocketImpl.init();
 
     return natDoListen(host, port);
   }
 
   public class Handle extends ServerSocket {
-    public void bind(SocketAddress address)
+    public Handle() throws IOException {
+		super();
+	}
+
+	public void bind(SocketAddress address)
       throws IOException
     {
       InetSocketAddress a;

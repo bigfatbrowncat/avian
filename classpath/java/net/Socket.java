@@ -22,6 +22,10 @@ public class Socket implements Closeable, AutoCloseable {
 	private InetSocketAddress localAddress;
 	private InetSocketAddress remoteAddress;
 
+	public Socket(SocketImpl socketImpl) throws IOException {
+		this.socketImpl = socketImpl;
+	}
+
 	/**
 	 * Creates a new empty unconnected socket. Use <code>connect</code> to connnect it.
 	 * <p><em>The signature of this method differs from JDK. In JDK this constructor

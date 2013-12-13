@@ -120,6 +120,9 @@ public class DefaultSocketImpl extends SocketImpl {
 	private static native void bind(/* SOCKET */long sock, long addr, short port) throws IOException;
 	private static native void bindAny(/* SOCKET */long sock) throws IOException;
 
+	private static native void listen_native(/* SOCKET */long sock, int backlog);
+	private static native /* SOCKET */long accept(/* SOCKET */long sock);
+	
 	private static native int getLocalAddress(/* SOCKET */long sock) throws IOException;
 	private static native int getLocalPort(/* SOCKET */long sock) throws IOException;
 	private static native int getRemoteAddress(/* SOCKET */long sock) throws IOException;
@@ -209,8 +212,8 @@ public class DefaultSocketImpl extends SocketImpl {
 	
 	@Override
 	protected void accept(SocketImpl s) throws IOException {
-		// TODO Auto-generated method stub
-		
+		DefaultSocketImpl dsa = (DefaultSocketImpl)s;
+		dsa.sock = accept(sock);
 	}
 
 	private void bind(SocketAddress bindpoint) throws IOException, SocketException {
@@ -319,8 +322,7 @@ public class DefaultSocketImpl extends SocketImpl {
 
 	@Override
 	protected void listen(int backlog) {
-		// TODO Auto-generated method stub
-		
+		listen_native(sock, backlog);
 	}
 	
 	

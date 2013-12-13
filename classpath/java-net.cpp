@@ -16,78 +16,91 @@
 using namespace avian::classpath::sockets;
 
 extern "C" JNIEXPORT void JNICALL
-Java_java_net_Socket_init(JNIEnv* e, jclass) {
+Java_java_net_DefaultSocketImpl_init(JNIEnv* e, jclass) {
 	init(e);
 }
 
 extern "C" JNIEXPORT SOCKET JNICALL
-Java_java_net_Socket_create(JNIEnv* e, jclass) {
+Java_java_net_DefaultSocketImpl_create(JNIEnv* e, jclass) {
 	return create(e);
 }
 
 extern "C" JNIEXPORT void JNICALL
-Java_java_net_Socket_connect(JNIEnv* e, jclass, SOCKET sock, long addr, short port) {
+Java_java_net_DefaultSocketImpl_connect(JNIEnv* e, jclass, SOCKET sock, long addr, short port) {
 	connect(e, sock, addr, port);
 }
 
 extern "C" JNIEXPORT void JNICALL
-Java_java_net_Socket_connectTimeout(JNIEnv* e, jclass, SOCKET sock, long addr, short port, int timeout) {
+Java_java_net_DefaultSocketImpl_connectTimeout(JNIEnv* e, jclass, SOCKET sock, long addr, short port, int timeout) {
 	connect(e, sock, addr, port, timeout);
 }
 
 extern "C" JNIEXPORT void JNICALL
-Java_java_net_Socket_bind(JNIEnv* e, jclass, SOCKET sock, long addr, short port) {
+Java_java_net_DefaultSocketImpl_bind(JNIEnv* e, jclass, SOCKET sock, long addr, short port) {
 	bind(e, sock, addr, port);
 }
 
 extern "C" JNIEXPORT void JNICALL
-Java_java_net_Socket_bindAny(JNIEnv* e, jclass, SOCKET sock) {
+Java_java_net_DefaultSocketImpl_listen_native(JNIEnv* e, jclass, SOCKET sock, int backlog) {
+	listen(e, sock, backlog);
+}
+
+extern "C" JNIEXPORT SOCKET JNICALL
+Java_java_net_DefaultSocketImpl_accept(JNIEnv* e, jclass, SOCKET sock) {
+
+	uint32_t client_addr;
+	uint16_t client_port;
+	return accept(e, sock, &client_addr, &client_port);
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_java_net_DefaultSocketImpl_bindAny(JNIEnv* e, jclass, SOCKET sock) {
 	bind(e, sock, INADDR_ANY, 0);
 }
 
 extern "C" JNIEXPORT jint JNICALL
-Java_java_net_Socket_getLocalAddress(JNIEnv* e, jclass, SOCKET sock) {
+Java_java_net_DefaultSocketImpl_getLocalAddress(JNIEnv* e, jclass, SOCKET sock) {
 	return getLocalAddress(e, sock);
 }
 
 extern "C" JNIEXPORT jint JNICALL
-Java_java_net_Socket_getLocalPort(JNIEnv* e, jclass, SOCKET sock) {
+Java_java_net_DefaultSocketImpl_getLocalPort(JNIEnv* e, jclass, SOCKET sock) {
 	return getLocalPort(e, sock);
 }
 
 extern "C" JNIEXPORT jint JNICALL
-Java_java_net_Socket_getRemoteAddress(JNIEnv* e, jclass, SOCKET sock) {
+Java_java_net_DefaultSocketImpl_getRemoteAddress(JNIEnv* e, jclass, SOCKET sock) {
 	return getRemoteAddress(e, sock);
 }
 
 extern "C" JNIEXPORT jint JNICALL
-Java_java_net_Socket_getRemotePort(JNIEnv* e, jclass, SOCKET sock) {
+Java_java_net_DefaultSocketImpl_getRemotePort(JNIEnv* e, jclass, SOCKET sock) {
 	return getRemotePort(e, sock);
 }
 
 
 extern "C" JNIEXPORT void JNICALL
-Java_java_net_Socket_abort(JNIEnv* e, jclass, SOCKET sock) {
+Java_java_net_DefaultSocketImpl_abort(JNIEnv* e, jclass, SOCKET sock) {
 	abort(e, sock);
 }
 
 extern "C" JNIEXPORT void JNICALL
-Java_java_net_Socket_close(JNIEnv* e, jclass, SOCKET sock) {
+Java_java_net_DefaultSocketImpl_close(JNIEnv* e, jclass, SOCKET sock) {
 	close(e, sock);
 }
 
 extern "C" JNIEXPORT void JNICALL
-Java_java_net_Socket_closeOutput(JNIEnv* e, jclass, SOCKET sock) {
+Java_java_net_DefaultSocketImpl_closeOutput(JNIEnv* e, jclass, SOCKET sock) {
 	close_output(e, sock);
 }
 
 extern "C" JNIEXPORT void JNICALL
-Java_java_net_Socket_closeInput(JNIEnv* e, jclass, SOCKET sock) {
+Java_java_net_DefaultSocketImpl_closeInput(JNIEnv* e, jclass, SOCKET sock) {
 	close_input(e, sock);
 }
 
 extern "C" JNIEXPORT void JNICALL
-Avian_java_net_Socket_send(vm::Thread* t, vm::object, uintptr_t* arguments) {		/* SOCKET s, object buffer_obj, int start_pos, int count  */
+Avian_java_net_DefaultSocketImpl_send(vm::Thread* t, vm::object, uintptr_t* arguments) {		/* SOCKET s, object buffer_obj, int start_pos, int count  */
 	SOCKET& s = *(reinterpret_cast<SOCKET*>(&arguments[0]));
 	vm::object buffer_obj = reinterpret_cast<vm::object>(arguments[2]);
 	int32_t& start_pos = *(reinterpret_cast<int32_t*>(&arguments[3]));
@@ -97,7 +110,7 @@ Avian_java_net_Socket_send(vm::Thread* t, vm::object, uintptr_t* arguments) {		/
 }
 
 extern "C" JNIEXPORT int64_t JNICALL
-Avian_java_net_Socket_recv(vm::Thread* t, vm::object, uintptr_t* arguments) {		/* SOCKET s, object buffer_obj, int start_pos, int count  */
+Avian_java_net_DefaultSocketImpl_recv(vm::Thread* t, vm::object, uintptr_t* arguments) {		/* SOCKET s, object buffer_obj, int start_pos, int count  */
 	SOCKET& s = *(reinterpret_cast<SOCKET*>(&arguments[0]));
 	vm::object buffer_obj = reinterpret_cast<vm::object>(arguments[2]);
 	int32_t& start_pos = *(reinterpret_cast<int32_t*>(&arguments[3]));

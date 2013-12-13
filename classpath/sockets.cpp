@@ -176,6 +176,7 @@ void bind(JNIEnv* e, SOCKET sock, uint32_t addr, uint16_t port) {
 	}
 }
 
+
 uint32_t getLocalAddress(JNIEnv* e, SOCKET sock) {
 	sockaddr_in adr;
 	socklen_t adrlen = sizeof(adr);
@@ -230,6 +231,16 @@ uint16_t getRemotePort(JNIEnv* e, SOCKET sock) {
 		return 0;
 	}
 	return ntohs(adr.sin_port);
+}
+
+
+bool listen(JNIEnv* e, SOCKET sock, int backlog) {
+	if (SOCKET_ERROR == listen(sock, backlog)) {
+		char buf[255];
+		sprintf(buf, "Can't set the socket to the listening state. System error: %d", last_socket_error());
+		throwNew(e, "java/io/IOException", buf);
+		return false;
+	}
 }
 
 SOCKET accept(JNIEnv* e, SOCKET sock, uint32_t* client_addr, uint16_t* client_port) {

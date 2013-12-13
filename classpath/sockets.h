@@ -65,6 +65,7 @@ uint32_t getLocalAddress(JNIEnv* e, SOCKET sock);
 uint16_t getLocalPort(JNIEnv* e, SOCKET sock);
 uint32_t getRemoteAddress(JNIEnv* e, SOCKET sock);
 uint16_t getRemotePort(JNIEnv* e, SOCKET sock);
+bool listen(JNIEnv* e, SOCKET sock, int backlog);
 SOCKET accept(JNIEnv* e, SOCKET sock, uint32_t* client_addr, uint16_t* client_port);
 
 // I/O

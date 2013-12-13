@@ -12,6 +12,7 @@ package java.nio.channels;
 
 import java.io.IOException;
 import java.util.Iterator;
+import java.net.DefaultSocketImpl;
 import java.net.Socket;
 
 class SocketSelector extends Selector {
@@ -20,7 +21,7 @@ class SocketSelector extends Selector {
   protected boolean woken = false;
 
   public SocketSelector() throws IOException {
-    Socket.init();
+	  DefaultSocketImpl.init();
 
     state = natInit();
   }
