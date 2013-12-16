@@ -167,6 +167,8 @@ public class DefaultSocketImpl extends SocketImpl {
 		
 		// No explicit binding, just connect
 		connect(sock, address.getRawAddress(), (short)port);
+		this.address = address;
+		this.port = port;
 		
 		// ...and get implicit binding data 
 		retrieveLocalAddress();
@@ -174,6 +176,7 @@ public class DefaultSocketImpl extends SocketImpl {
 	
 	public DefaultSocketImpl(String host, int port, InetAddress localAddr, int localPort) throws UnknownHostException, IOException {
 		this();
+		
 		if (port < 0 || port > 65535) {
 			throw new IllegalArgumentException("port should be between 0 and 65535");
 		}
@@ -183,11 +186,10 @@ public class DefaultSocketImpl extends SocketImpl {
 
 		// First bind
 		bind(new InetSocketAddress(localAddr, localPort));
-		address = localAddr;
-		localport = localPort;
 		
 		// ...then connect
-		InetAddress address = InetAddress.getByName(host);
+		address = InetAddress.getByName(host);
+		this.port = port;
 		connect(sock,  address.getRawAddress(), (short)port);
 	}
 	
@@ -203,7 +205,7 @@ public class DefaultSocketImpl extends SocketImpl {
 
 		// First bind
 		bind(new InetSocketAddress(localAddr, localPort));
-		address = localAddr;
+		retrieveLocalAddress();
 		localport = localPort;
 		
 		// ...then connect
@@ -218,15 +220,14 @@ public class DefaultSocketImpl extends SocketImpl {
 
 	private void bind(SocketAddress bindpoint) throws IOException, SocketException {
 
-
 		if (bindpoint == null) {
 			bindAny(sock);
-		}
-		if (bindpoint instanceof InetSocketAddress) {
+			retrieveLocalAddress();
+		} else if (bindpoint instanceof InetSocketAddress) {
 			InetSocketAddress inetBindpoint = (InetSocketAddress)bindpoint;
 			bind(sock, inetBindpoint.getAddress().getRawAddress(), (short) inetBindpoint.getPort());
-			address = InetAddress.getByName(inetBindpoint.getHostName());
 			localport = inetBindpoint.getPort();
+			localAddress = new InetSocketAddress(InetAddress.getByName(inetBindpoint.getHostName()), localport); 
 		} else {
 			throw new IllegalArgumentException("only InetSocketAddress supported so far");
 		}
@@ -235,6 +236,7 @@ public class DefaultSocketImpl extends SocketImpl {
 	@Override
 	protected void bind(InetAddress host, int port) throws IOException {
 		bind(new InetSocketAddress(host, port));
+		localAddress = new InetSocketAddress(host, port); 
 	}
 
 	@Override
@@ -254,7 +256,7 @@ public class DefaultSocketImpl extends SocketImpl {
 			connect(sock, inetSocketAddress.getAddress().getRawAddress(), (short)(inetSocketAddress.getPort()));
 	
 			// ...then get binding data (if no explicit binding is done before)
-			//retrieveLocalAddress();
+			retrieveLocalAddress();
 		} else {
 			throw new IllegalArgumentException("only InetSocketAddress supported so far");
 		}

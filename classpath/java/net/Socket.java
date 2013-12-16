@@ -19,8 +19,7 @@ public class Socket implements Closeable, AutoCloseable {
 	
 	private SocketImpl socketImpl = new DefaultSocketImpl();
 
-	private InetSocketAddress localAddress;
-	private InetSocketAddress remoteAddress;
+//	private InetSocketAddress localAddress;
 
 	public Socket(SocketImpl socketImpl) throws IOException {
 		this.socketImpl = socketImpl;
@@ -48,6 +47,7 @@ public class Socket implements Closeable, AutoCloseable {
 	 */
 	public Socket(String host, int port) throws UnknownHostException, IOException {
 		socketImpl = new DefaultSocketImpl(host, port);
+//		localAddress = ((DefaultSocketImpl)socketImpl).getLocalAddress();
 	}
 	
 	/**
@@ -60,10 +60,8 @@ public class Socket implements Closeable, AutoCloseable {
 	 */
 	public Socket(InetAddress address, int port) throws IOException {
 		socketImpl = new DefaultSocketImpl(address, port);
-		remoteAddress = new InetSocketAddress(address, port);
 		if (socketImpl instanceof DefaultSocketImpl) {
-			if (localAddress == null) 
-				localAddress = ((DefaultSocketImpl)socketImpl).getLocalAddress();
+//			localAddress = ((DefaultSocketImpl)socketImpl).getLocalAddress();
 		}
 	}
 	
@@ -78,9 +76,7 @@ public class Socket implements Closeable, AutoCloseable {
 	 */
 	public Socket(String host, int port, InetAddress localAddr, int localPort) throws UnknownHostException, IOException {
 		socketImpl = new DefaultSocketImpl(host, port, localAddr, localPort);
-		InetAddress address = InetAddress.getByName(host);
-		localAddress = new InetSocketAddress(localAddr, localPort);
-		remoteAddress = new InetSocketAddress(address, port);
+//		localAddress = new InetSocketAddress(localAddr, localPort);
 	}
 
 	/**
@@ -96,8 +92,7 @@ public class Socket implements Closeable, AutoCloseable {
 	 */
 	public Socket(InetAddress address, int port, InetAddress localAddr, int localPort) throws IOException {
 		socketImpl = new DefaultSocketImpl(address, port, localAddr, localPort);
-		localAddress = new InetSocketAddress(localAddr, localPort);
-		remoteAddress = new InetSocketAddress(address, port);
+//		localAddress = new InetSocketAddress(localAddr, localPort);
 	}
 	
 	/**
@@ -110,10 +105,9 @@ public class Socket implements Closeable, AutoCloseable {
 	public void connect(SocketAddress endpoint) throws IOException {
 		socketImpl.connect(((InetSocketAddress)endpoint).getAddress(), ((InetSocketAddress)endpoint).getPort());
 		if (socketImpl instanceof DefaultSocketImpl) {
-			InetSocketAddress inetSocketAddress = (InetSocketAddress)endpoint;
-			remoteAddress = inetSocketAddress;
-			if (localAddress == null) 
-				localAddress = ((DefaultSocketImpl)socketImpl).getLocalAddress();
+			//InetSocketAddress inetSocketAddress = (InetSocketAddress)endpoint;
+/*			if (localAddress == null) 
+				localAddress = ((DefaultSocketImpl)socketImpl).getLocalAddress();*/
 		}
 	}
 	
@@ -130,10 +124,8 @@ public class Socket implements Closeable, AutoCloseable {
 	public void connect(SocketAddress endpoint, int timeout) throws IOException, SocketTimeoutException {
 		socketImpl.connect(endpoint, timeout);
 		if (socketImpl instanceof DefaultSocketImpl) {
-			InetSocketAddress inetSocketAddress = (InetSocketAddress)endpoint;
-			remoteAddress = inetSocketAddress;
-			if (localAddress == null) 
-				localAddress = ((DefaultSocketImpl)socketImpl).getLocalAddress();
+/*			if (localAddress == null) 
+				localAddress = ((DefaultSocketImpl)socketImpl).getLocalAddress();*/
 		}
 	}
 	
@@ -146,16 +138,16 @@ public class Socket implements Closeable, AutoCloseable {
 	 * subclass that's not supported by this socket
 	 */
 	public void bind(SocketAddress bindpoint) throws IOException, SocketException {
-		if (localAddress != null) {
+/*		if (localAddress != null) {
 			throw new SocketException("Socket already bound to " + localAddress.toString());
-		}
+		}*/
 		
 		socketImpl.bind(((InetSocketAddress)bindpoint).getAddress(), ((InetSocketAddress)bindpoint).getPort());
 
-		if (bindpoint instanceof InetSocketAddress) {
+/*		if (bindpoint instanceof InetSocketAddress) {
 			InetSocketAddress inetBindpoint = (InetSocketAddress)bindpoint;
 			localAddress = inetBindpoint;
-		}
+		}*/
 	}
 	
 	/**
@@ -179,7 +171,11 @@ public class Socket implements Closeable, AutoCloseable {
 	 * @return the address to which this socket is bound or <code>null</code> if it isn't bound yet
 	 */
 	public InetAddress getLocalAddress() {
-		return localAddress.getAddress();
+		if (socketImpl instanceof DefaultSocketImpl) {
+			return ((DefaultSocketImpl)socketImpl).getLocalAddress().getAddress();
+		} else {
+			return null;
+		}
 	}
 	
 	/**
@@ -207,7 +203,7 @@ public class Socket implements Closeable, AutoCloseable {
 	 * @return the remote address or <code>null</code> if the socket hasn't been connected
 	 */
 	public SocketAddress getRemoteSocketAddress() {
-		return remoteAddress;
+		return new InetSocketAddress(socketImpl.getInetAddress(), socketImpl.getPort());
 	}
 	
 	/**
@@ -215,7 +211,11 @@ public class Socket implements Closeable, AutoCloseable {
 	 * @return the local address or <code>null</code> if the socket hasn't been bound
 	 */
 	public SocketAddress getLocalSocketAddress() {
-		return new InetSocketAddress(socketImpl.getInetAddress(), socketImpl.getLocalPort());
+		if (socketImpl instanceof DefaultSocketImpl) {
+			return ((DefaultSocketImpl)socketImpl).getLocalAddress();
+		} else {
+			return null;
+		}
 	}
 
 	/**
