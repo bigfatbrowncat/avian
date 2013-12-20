@@ -41,7 +41,7 @@ Java_java_net_DefaultSocketImpl_bind(JNIEnv* e, jclass, SOCKET sock, long addr, 
 }
 
 extern "C" JNIEXPORT void JNICALL
-Java_java_net_DefaultSocketImpl_listen_native(JNIEnv* e, jclass, SOCKET sock, int backlog) {
+Java_java_net_DefaultSocketImpl_listenNative(JNIEnv* e, jclass, SOCKET sock, int backlog) {
 	listen(e, sock, backlog);
 }
 
@@ -78,6 +78,10 @@ Java_java_net_DefaultSocketImpl_getRemotePort(JNIEnv* e, jclass, SOCKET sock) {
 	return getRemotePort(e, sock);
 }
 
+extern "C" JNIEXPORT bool JNICALL
+Java_java_net_DefaultSocketImpl_isConnected(JNIEnv* e, jclass, SOCKET sock) {
+	return isConnected(e, sock);
+}
 
 extern "C" JNIEXPORT void JNICALL
 Java_java_net_DefaultSocketImpl_abort(JNIEnv* e, jclass, SOCKET sock) {
@@ -116,8 +120,19 @@ Avian_java_net_DefaultSocketImpl_recv(vm::Thread* t, vm::object, uintptr_t* argu
 	int32_t& start_pos = *(reinterpret_cast<int32_t*>(&arguments[3]));
 	int32_t& count = *(reinterpret_cast<int32_t*>(&arguments[4]));
 	char* buffer = reinterpret_cast<char*>(&vm::byteArrayBody(t, buffer_obj, start_pos));
-	return avian::classpath::sockets::recv((JNIEnv*)t, s, buffer, count);
+	return avian::classpath::sockets::recv((JNIEnv*)t, s, buffer, count, false);
 }
+
+extern "C" JNIEXPORT int64_t JNICALL
+Avian_java_net_DefaultSocketImpl_available(vm::Thread* t, vm::object, uintptr_t* arguments) {		/* SOCKET s, object buffer_obj, int start_pos, int count  */
+	SOCKET& s = *(reinterpret_cast<SOCKET*>(&arguments[0]));
+	vm::object buffer_obj = reinterpret_cast<vm::object>(arguments[2]);
+	int32_t& start_pos = *(reinterpret_cast<int32_t*>(&arguments[3]));
+	int32_t& count = *(reinterpret_cast<int32_t*>(&arguments[4]));
+	char* buffer = reinterpret_cast<char*>(&vm::byteArrayBody(t, buffer_obj, start_pos));
+	return avian::classpath::sockets::recv((JNIEnv*)t, s, buffer, count, true);
+}
+
 
 extern "C" JNIEXPORT jint JNICALL
 Java_java_net_InetAddress_ipv4AddressForName(JNIEnv* e,

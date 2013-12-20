@@ -11,11 +11,15 @@ public class DefaultSocketImpl extends SocketImpl {
 	private class SocketInputStream extends InputStream {
 
 		private boolean closed = false;
+		private byte[] testBuffer = new byte[BUFFER_SIZE]; 
 		
 		@Override
 		public void close() throws IOException {
 			if (!closed) {
-				closeInput(sock);
+				System.out.println("closing in");
+				if (isConnected(sock)) {
+					closeInput(sock);
+				}
 				closed = true;
 			}
 			super.close();
@@ -29,16 +33,20 @@ public class DefaultSocketImpl extends SocketImpl {
 		
 		@Override
 		public int read() throws IOException {
+			System.out.print("> reading byte: ");
 			byte[] buffer = new byte[1];
 			int size = recv(sock, buffer, 0, 1);
 			if (size == 0) {
+				closed = true;
 				return -1;
 			}
+			System.out.println(buffer[0]);
 			return buffer[0];
 		}
 		
-		@Override
+		/*@Override
 		public int read(byte[] buffer) throws IOException {
+			System.out.println("> reading buffer");
 			int fullSize = buffer.length;
 			int index = 0;
 			int size;
@@ -47,10 +55,18 @@ public class DefaultSocketImpl extends SocketImpl {
 				fullSize -= size;
 				index += size;
 			} while (fullSize != 0 && size != 0);
-			return index;
-		}
 
-		
+			if (size == 0) {
+				closed = true;
+			}
+			
+			return index;
+		}*/
+
+		@Override
+		public int available() throws IOException {
+			return DefaultSocketImpl.available(sock, testBuffer, 0, BUFFER_SIZE);
+		}
 	}
 	private class SocketOutputStream extends OutputStream {
 
@@ -59,7 +75,10 @@ public class DefaultSocketImpl extends SocketImpl {
 		@Override
 		public void close() throws IOException {
 			if (!closed) {
-				closeOutput(sock);
+				System.out.println("closing out");
+				if (isConnected(sock)) {
+					closeOutput(sock);
+				}
 				closed = true;
 			}
 			super.close();
@@ -73,15 +92,19 @@ public class DefaultSocketImpl extends SocketImpl {
 		
 		@Override
 		public void write(int c) throws IOException {
+			System.out.print("> writing one byte: " + c);
 			byte[] res = new byte[1];
 			res[0] = (byte)c;
 			send(sock, res, 0, 1);
+			System.out.println(" sent");
 		}
 		
-		@Override
-		public void write(byte[] buffer) throws IOException {
+		/*@Override
+		public void write(byte[] buffer, int offset, int length) throws IOException {
+			System.out.println("> writing " + buffer.length + " bytes");
+			System.out.flush();
 			int fullSize = buffer.length;
-			int index = 0;
+			int index = offset;
 			int size;
 			do {
 				size = Math.min(fullSize, BUFFER_SIZE);
@@ -89,8 +112,7 @@ public class DefaultSocketImpl extends SocketImpl {
 				fullSize -= size;
 				index += size;
 			} while (fullSize != 0 && size != 0);
-		}
-
+		}*/
 	}
 
 	
@@ -100,6 +122,7 @@ public class DefaultSocketImpl extends SocketImpl {
 	 * @throws IOException
 	 */
 	public static native void init() throws IOException;
+	private static boolean initialized = false;
 	
 	/**
 	 * Creates the native socket object
@@ -120,7 +143,7 @@ public class DefaultSocketImpl extends SocketImpl {
 	private static native void bind(/* SOCKET */long sock, long addr, short port) throws IOException;
 	private static native void bindAny(/* SOCKET */long sock) throws IOException;
 
-	private static native void listen_native(/* SOCKET */long sock, int backlog);
+	private static native void listenNative(/* SOCKET */long sock, int backlog);
 	private static native /* SOCKET */long accept(/* SOCKET */long sock);
 	
 	private static native int getLocalAddress(/* SOCKET */long sock) throws IOException;
@@ -131,13 +154,16 @@ public class DefaultSocketImpl extends SocketImpl {
 	
 	private static native void send(/* SOCKET */long sock, byte[] buffer, int start_pos, int count) throws IOException;
 	private static native int recv(/* SOCKET */long sock, byte[] buffer, int start_pos, int count) throws IOException;
+	private static native int available(/* SOCKET */long sock, byte[] buffer, int start_pos, int count) throws IOException;
 	
+	private static native boolean isConnected(/* SOCKET */long sock);
 	private static native void abort(/* SOCKET */long sock);
 	private static native void close(/* SOCKET */long sock);
 	private static native void closeOutput(/* SOCKET */long sock);
 	private static native void closeInput(/* SOCKET */long sock);
 
 	private long sock;
+	
 	private InputStream inputStream;
 	private OutputStream outputStream;
 	
@@ -148,7 +174,11 @@ public class DefaultSocketImpl extends SocketImpl {
 	}
 	
 	protected DefaultSocketImpl() throws IOException {
-		init();
+		if (!initialized) {
+			init();
+			initialized = true;
+		}
+		
 		sock = create();
 		inputStream = new SocketInputStream();
 		outputStream = new SocketOutputStream();
@@ -241,6 +271,11 @@ public class DefaultSocketImpl extends SocketImpl {
 
 	@Override
 	protected void close() throws IOException {
+		// Shutting down input and output streams
+		((SocketInputStream)inputStream).close();
+		((SocketOutputStream)outputStream).close();
+		
+		// Closing the socket descriptor
 		close(sock);
 	}
 
@@ -302,7 +337,7 @@ public class DefaultSocketImpl extends SocketImpl {
 	protected void create(boolean stream) throws IOException {
 		if (stream == true) {
 			// Creating TCP socket
-			init();
+			//init();
 			sock = create();
 			inputStream = new SocketInputStream();
 			outputStream = new SocketOutputStream();
@@ -324,7 +359,7 @@ public class DefaultSocketImpl extends SocketImpl {
 
 	@Override
 	protected void listen(int backlog) {
-		listen_native(sock, backlog);
+		listenNative(sock, backlog);
 	}
 	
 	
