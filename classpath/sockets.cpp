@@ -296,7 +296,7 @@ int recv(JNIEnv* e, SOCKET sock, char* buff_ptr, int buff_size, bool peek) {
 }
 
 void close(JNIEnv* e, SOCKET sock) {
-	if (SOCKET_ERROR == closesocket(sock)) {
+	if (SOCKET_ERROR == ::closesocket(sock)) {
 		int errcode = last_socket_error();
 		char buf[255];
 		sprintf(buf, "Can't shutdown the socket. System error: %d", errcode);
@@ -307,7 +307,7 @@ void close(JNIEnv* e, SOCKET sock) {
 void shutdown_input(JNIEnv* e, SOCKET sock) {
 	if (SOCKET_ERROR == ::shutdown(sock, SD_RECEIVE)) {
 		int errcode = last_socket_error();
-		if (errcode != WSAENOTCONN && errcode != ENOTCONN) {
+		if (errcode != WSAENOTCONN) {
 			char buf[255];
 			sprintf(buf, "Can't shutdown the socket. System error: %d", errcode);
 			throwNew(e, "java/io/IOException", buf);
@@ -318,7 +318,7 @@ void shutdown_input(JNIEnv* e, SOCKET sock) {
 void shutdown_output(JNIEnv* e, SOCKET sock) {
 	if (SOCKET_ERROR == ::shutdown(sock, SD_SEND)) {
 		int errcode = last_socket_error();
-		if (errcode != WSAENOTCONN && errcode != ENOTCONN) {
+		if (errcode != WSAENOTCONN) {
 			char buf[255];
 			sprintf(buf, "Can't shutdown the socket. System error: %d", errcode);
 			throwNew(e, "java/io/IOException", buf);

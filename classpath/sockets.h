@@ -45,6 +45,8 @@
 #  define SD_SEND				SHUT_WR
 #  define SD_BOTH				SHUT_RDWR
 
+#  define WSAENOTCONN			ENOTCONN
+
 #  define NO_ERROR				0
 
 #endif
