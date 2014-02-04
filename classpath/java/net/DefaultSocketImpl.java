@@ -16,10 +16,7 @@ public class DefaultSocketImpl extends SocketImpl {
 		@Override
 		public void close() throws IOException {
 			if (!closed) {
-				System.out.println("closing in");
-				if (isConnected(sock)) {
-					closeInput(sock);
-				}
+				shutdownInput(sock);
 				closed = true;
 			}
 			super.close();
@@ -33,14 +30,12 @@ public class DefaultSocketImpl extends SocketImpl {
 		
 		@Override
 		public int read() throws IOException {
-			System.out.print("> reading byte: ");
 			byte[] buffer = new byte[1];
 			int size = recv(sock, buffer, 0, 1);
 			if (size == 0) {
 				closed = true;
 				return -1;
 			}
-			System.out.println(buffer[0]);
 			return buffer[0];
 		}
 		
@@ -75,10 +70,7 @@ public class DefaultSocketImpl extends SocketImpl {
 		@Override
 		public void close() throws IOException {
 			if (!closed) {
-				System.out.println("closing out");
-				if (isConnected(sock)) {
-					closeOutput(sock);
-				}
+				shutdownOutput(sock);
 				closed = true;
 			}
 			super.close();
@@ -92,11 +84,9 @@ public class DefaultSocketImpl extends SocketImpl {
 		
 		@Override
 		public void write(int c) throws IOException {
-			System.out.print("> writing one byte: " + c);
 			byte[] res = new byte[1];
 			res[0] = (byte)c;
 			send(sock, res, 0, 1);
-			System.out.println(" sent");
 		}
 		
 		/*@Override
@@ -156,11 +146,9 @@ public class DefaultSocketImpl extends SocketImpl {
 	private static native int recv(/* SOCKET */long sock, byte[] buffer, int start_pos, int count) throws IOException;
 	private static native int available(/* SOCKET */long sock, byte[] buffer, int start_pos, int count) throws IOException;
 	
-	private static native boolean isConnected(/* SOCKET */long sock);
-	private static native void abort(/* SOCKET */long sock);
 	private static native void close(/* SOCKET */long sock);
-	private static native void closeOutput(/* SOCKET */long sock);
-	private static native void closeInput(/* SOCKET */long sock);
+	private static native void shutdownOutput(/* SOCKET */long sock);
+	private static native void shutdownInput(/* SOCKET */long sock);
 
 	private long sock;
 	
@@ -274,7 +262,7 @@ public class DefaultSocketImpl extends SocketImpl {
 		// Shutting down input and output streams
 		((SocketInputStream)inputStream).close();
 		((SocketOutputStream)outputStream).close();
-		
+
 		// Closing the socket descriptor
 		close(sock);
 	}

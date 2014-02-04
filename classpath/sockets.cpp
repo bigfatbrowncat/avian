@@ -295,20 +295,6 @@ int recv(JNIEnv* e, SOCKET sock, char* buff_ptr, int buff_size, bool peek) {
 	return length;
 }
 
-bool isConnected(JNIEnv*, SOCKET sock) {
-	char buf;
-	int err = ::recv(sock, &buf, 1, MSG_PEEK);
-	return err == -1 ? false : true;
-}
-
-void abort(JNIEnv* e, SOCKET sock) {
-	if (SOCKET_ERROR == ::closesocket(sock)) {
-		char buf[255];
-		sprintf(buf, "Can't close the socket. System error: %d", last_socket_error());
-		throwNew(e, "java/io/IOException", buf);
-	}
-}
-
 void close(JNIEnv* e, SOCKET sock) {
 	if (SOCKET_ERROR == closesocket(sock)) {
 		int errcode = last_socket_error();
@@ -318,7 +304,7 @@ void close(JNIEnv* e, SOCKET sock) {
 	}
 }
 
-void close_input(JNIEnv* e, SOCKET sock) {
+void shutdown_input(JNIEnv* e, SOCKET sock) {
 	if (SOCKET_ERROR == ::shutdown(sock, SD_RECEIVE)) {
 		int errcode = last_socket_error();
 		if (errcode != WSAENOTCONN && errcode != ENOTCONN) {
@@ -329,7 +315,7 @@ void close_input(JNIEnv* e, SOCKET sock) {
 	}
 }
 
-void close_output(JNIEnv* e, SOCKET sock) {
+void shutdown_output(JNIEnv* e, SOCKET sock) {
 	if (SOCKET_ERROR == ::shutdown(sock, SD_SEND)) {
 		int errcode = last_socket_error();
 		if (errcode != WSAENOTCONN && errcode != ENOTCONN) {

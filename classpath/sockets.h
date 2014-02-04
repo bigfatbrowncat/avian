@@ -73,11 +73,9 @@ void send(JNIEnv* e, SOCKET sock, const char* buff_ptr, int buff_size);
 int recv(JNIEnv* e, SOCKET sock, char* buff_ptr, int buff_size, bool peek);
 
 // Socket closing
-bool isConnected(JNIEnv*, SOCKET sock);
-void abort(JNIEnv* e, SOCKET sock);
 void close(JNIEnv* e, SOCKET sock);
-void close_input(JNIEnv* e, SOCKET sock);
-void close_output(JNIEnv* e, SOCKET sock);
+void shutdown_input(JNIEnv* e, SOCKET sock);
+void shutdown_output(JNIEnv* e, SOCKET sock);
 
 }
 }

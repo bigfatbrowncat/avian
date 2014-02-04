@@ -78,29 +78,19 @@ Java_java_net_DefaultSocketImpl_getRemotePort(JNIEnv* e, jclass, SOCKET sock) {
 	return getRemotePort(e, sock);
 }
 
-extern "C" JNIEXPORT bool JNICALL
-Java_java_net_DefaultSocketImpl_isConnected(JNIEnv* e, jclass, SOCKET sock) {
-	return isConnected(e, sock);
-}
-
-extern "C" JNIEXPORT void JNICALL
-Java_java_net_DefaultSocketImpl_abort(JNIEnv* e, jclass, SOCKET sock) {
-	abort(e, sock);
-}
-
 extern "C" JNIEXPORT void JNICALL
 Java_java_net_DefaultSocketImpl_close(JNIEnv* e, jclass, SOCKET sock) {
 	close(e, sock);
 }
 
 extern "C" JNIEXPORT void JNICALL
-Java_java_net_DefaultSocketImpl_closeOutput(JNIEnv* e, jclass, SOCKET sock) {
-	close_output(e, sock);
+Java_java_net_DefaultSocketImpl_shutdownOutput(JNIEnv* e, jclass, SOCKET sock) {
+	shutdown_output(e, sock);
 }
 
 extern "C" JNIEXPORT void JNICALL
-Java_java_net_DefaultSocketImpl_closeInput(JNIEnv* e, jclass, SOCKET sock) {
-	close_input(e, sock);
+Java_java_net_DefaultSocketImpl_shutdownInput(JNIEnv* e, jclass, SOCKET sock) {
+	shutdown_input(e, sock);
 }
 
 extern "C" JNIEXPORT void JNICALL
