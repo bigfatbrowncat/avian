@@ -11,6 +11,7 @@ public class DefaultSocketImpl extends SocketImpl {
 	private class SocketInputStream extends InputStream {
 
 		private boolean closed = false;
+		private boolean eof = false;
 		private byte[] testBuffer = new byte[BUFFER_SIZE]; 
 		
 		@Override
@@ -40,24 +41,26 @@ public class DefaultSocketImpl extends SocketImpl {
 			return buffer[0];
 		}
 		
-		/*@Override
-		public int read(byte[] buffer) throws IOException {
-			System.out.println("> reading buffer");
-			int fullSize = buffer.length;
-			int index = 0;
+		@Override
+		public int read(byte[] buffer, int offset, int length) throws IOException {
+			//Thread.currentThread().getStackTrace().
+			System.out.print("> reading buffer ");
+			int index = offset;
 			int size;
 			do {
-				size = recv(sock, buffer, index, Math.min(fullSize, BUFFER_SIZE));
-				fullSize -= size;
+				size = recv(sock, buffer, index, Math.min(length, BUFFER_SIZE));
+				length -= size;
 				index += size;
-			} while (fullSize != 0 && size != 0);
+			} while (length != 0 && size != 0);
+			System.out.print(length == 0 ? " length out " : " size out ");
+			System.out.println("size is " + size);
 
 			if (size == 0) {
-				closed = true;
+				eof = true;
 			}
 			
 			return index;
-		}*/
+		}
 
 		@Override
 		public int available() throws IOException {
@@ -87,6 +90,7 @@ public class DefaultSocketImpl extends SocketImpl {
 		public void write(int c) throws IOException {
 			byte[] res = new byte[1];
 			res[0] = (byte)c;
+			//System.err.print((char)res[0]);
 			send(sock, res, 0, 1);
 		}
 		

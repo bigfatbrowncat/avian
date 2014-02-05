@@ -285,6 +285,9 @@ void send(JNIEnv* e, SOCKET sock, const char* buff_ptr, int buff_size) {
 int recv(JNIEnv* e, SOCKET sock, char* buff_ptr, int buff_size, bool peek) {
 	int flag = peek ? MSG_PEEK : 0;
 
+	//int timeout = 3000; // 3 seconds
+	//setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, (const char*)&timeout, sizeof(timeval));
+
 	int length = ::recv(sock, buff_ptr, buff_size, flag);
 	if (SOCKET_ERROR == length) {
 		char buf[255];
@@ -296,7 +299,7 @@ int recv(JNIEnv* e, SOCKET sock, char* buff_ptr, int buff_size, bool peek) {
 }
 
 long available(JNIEnv* e, SOCKET sock) {
-	long bytes_available = 0;
+	u_long bytes_available = 0;
 	if (SOCKET_ERROR == ioctlsocket(sock, FIONREAD, &bytes_available))
 	{
 		int errcode = last_socket_error();
@@ -305,7 +308,7 @@ long available(JNIEnv* e, SOCKET sock) {
 		throwNew(e, "java/io/IOException", buf);
 		return 0;
 	}
-	return bytes_available;
+	return (long)bytes_available;
 }
 
 void close(JNIEnv* e, SOCKET sock) {
