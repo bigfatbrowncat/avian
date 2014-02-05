@@ -295,6 +295,19 @@ int recv(JNIEnv* e, SOCKET sock, char* buff_ptr, int buff_size, bool peek) {
 	return length;
 }
 
+long available(JNIEnv* e, SOCKET sock) {
+	long bytes_available = 0;
+	if (SOCKET_ERROR == ioctlsocket(sock, FIONREAD, &bytes_available))
+	{
+		int errcode = last_socket_error();
+		char buf[255];
+		sprintf(buf, "Can't check for available bytes. System error: %d", errcode);
+		throwNew(e, "java/io/IOException", buf);
+		return 0;
+	}
+	return bytes_available;
+}
+
 void close(JNIEnv* e, SOCKET sock) {
 	if (SOCKET_ERROR == ::closesocket(sock)) {
 		int errcode = last_socket_error();
@@ -325,6 +338,7 @@ void shutdown_output(JNIEnv* e, SOCKET sock) {
 		}
 	}
 }
+
 
 }
 }

@@ -73,6 +73,7 @@ SOCKET accept(JNIEnv* e, SOCKET sock, uint32_t* client_addr, uint16_t* client_po
 // I/O
 void send(JNIEnv* e, SOCKET sock, const char* buff_ptr, int buff_size);
 int recv(JNIEnv* e, SOCKET sock, char* buff_ptr, int buff_size, bool peek);
+long available(JNIEnv* e, SOCKET sock);
 
 // Socket closing
 void close(JNIEnv* e, SOCKET sock);

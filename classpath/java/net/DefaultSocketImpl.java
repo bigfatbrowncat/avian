@@ -31,9 +31,10 @@ public class DefaultSocketImpl extends SocketImpl {
 		@Override
 		public int read() throws IOException {
 			byte[] buffer = new byte[1];
+			
 			int size = recv(sock, buffer, 0, 1);
 			if (size == 0) {
-				closed = true;
+				//System.out.println("zero");
 				return -1;
 			}
 			return buffer[0];
@@ -60,7 +61,7 @@ public class DefaultSocketImpl extends SocketImpl {
 
 		@Override
 		public int available() throws IOException {
-			return DefaultSocketImpl.available(sock, testBuffer, 0, BUFFER_SIZE);
+			return (int)DefaultSocketImpl.available(sock);
 		}
 	}
 	private class SocketOutputStream extends OutputStream {
@@ -144,7 +145,7 @@ public class DefaultSocketImpl extends SocketImpl {
 	
 	private static native void send(/* SOCKET */long sock, byte[] buffer, int start_pos, int count) throws IOException;
 	private static native int recv(/* SOCKET */long sock, byte[] buffer, int start_pos, int count) throws IOException;
-	private static native int available(/* SOCKET */long sock, byte[] buffer, int start_pos, int count) throws IOException;
+	private static native long available(/* SOCKET */long sock) throws IOException;
 	
 	private static native void close(/* SOCKET */long sock);
 	private static native void shutdownOutput(/* SOCKET */long sock);
