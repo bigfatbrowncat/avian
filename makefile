@@ -1744,7 +1744,7 @@ $(build)/android.dep: $(luni-javas) $(dalvik-javas) $(libart-javas) \
 		| (cd $(build)/android-src && $(jar) x)
 #	(cd android && $(jar) c *)	| (cd $(build)/android-src && $(jar) x)
 	find $(build)/android-src -name '*.java' > $(build)/android.txt
-	$(javac) -J-Xmx512m -J-Xms512m -Xmaxerrs 1000 -d $(build)/android @$(build)/android.txt
+	$(javac) -Xmaxerrs 1000 -d $(build)/android @$(build)/android.txt
 	rm $(build)/android/sun/misc/Unsafe* \
 		$(build)/android/java/lang/reflect/Proxy*
 	for x in $(luni-copied-nonjavas); \
