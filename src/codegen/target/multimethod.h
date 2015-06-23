@@ -1,4 +1,4 @@
-/* Copyright (c) 2008-2014, Avian Contributors
+/* Copyright (c) 2008-2015, Avian Contributors
 
    Permission to use, copy, modify, and/or distribute this software
    for any purpose with or without fee is hereby granted, provided
@@ -17,9 +17,9 @@ namespace codegen {
 class Multimethod {
  public:
   inline static unsigned index(lir::UnaryOperation operation,
-                               lir::OperandType operand)
+                               lir::Operand::Type operand)
   {
-    return operation + (lir::UnaryOperationCount * operand);
+    return operation + (lir::UnaryOperationCount * (unsigned)operand);
   }
 };
 

@@ -1,4 +1,4 @@
-/* Copyright (c) 2008-2014, Avian Contributors
+/* Copyright (c) 2008-2015, Avian Contributors
 
    Permission to use, copy, modify, and/or distribute this software
    for any purpose with or without fee is hereby granted, provided
@@ -30,7 +30,8 @@ Architecture* makeArchitectureNative(vm::System* system,
 #elif(AVIAN_TARGET_ARCH == AVIAN_ARCH_X86) \
     || (AVIAN_TARGET_ARCH == AVIAN_ARCH_X86_64)
   return makeArchitectureX86(system, useNativeFeatures);
-#elif AVIAN_TARGET_ARCH == AVIAN_ARCH_ARM
+#elif (AVIAN_TARGET_ARCH == AVIAN_ARCH_ARM) \
+    || (AVIAN_TARGET_ARCH == AVIAN_ARCH_ARM64)
   return makeArchitectureArm(system, useNativeFeatures);
 #else
 #error "Unsupported codegen target"

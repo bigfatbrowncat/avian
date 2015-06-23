@@ -1,4 +1,4 @@
-/* Copyright (c) 2008-2014, Avian Contributors
+/* Copyright (c) 2008-2015, Avian Contributors
 
    Permission to use, copy, modify, and/or distribute this software
    for any purpose with or without fee is hereby granted, provided
@@ -27,7 +27,7 @@ namespace arm {
 
 const bool DebugPool = false;
 
-const int32_t PoolOffsetMask = 0xFFF;
+const int32_t PoolOffsetMask = vm::TargetBytesPerWord == 8 ? 0x1FFFFF : 0xFFF;
 
 class Task {
  public:

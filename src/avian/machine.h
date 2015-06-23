@@ -1,4 +1,4 @@
-/* Copyright (c) 2008-2014, Avian Contributors
+/* Copyright (c) 2008-2015, Avian Contributors
 
    Permission to use, copy, modify, and/or distribute this software
    for any purpose with or without fee is hereby granted, provided
@@ -1062,7 +1062,7 @@ class Machine {
   JNIEnvVTable jniEnvVTable;
   uintptr_t* heapPool[ThreadHeapPoolSize];
   unsigned heapPoolIndex;
-  unsigned bootimageSize;
+  size_t bootimageSize;
 };
 
 void printTrace(Thread* t, GcThrowable* exception);
@@ -1703,9 +1703,6 @@ bool instanceOf(Thread* t, GcClass* class_, object o);
 template <class T>
 T* GcObject::as(Thread* t UNUSED)
 {
-  if (this == 0) {
-    return 0;
-  }
   assertT(t,
           t->m->unsafe || instanceOf(t,
                                      reinterpret_cast<GcClass*>(arrayBodyUnsafe(
@@ -2554,7 +2551,6 @@ inline void NO_RETURN throw_(Thread* t, GcThrowable* e)
   t->exception = e;
 
   if (objectClass(t, e) == type(t, GcOutOfMemoryError::Type)) {
-#ifdef AVIAN_HEAPDUMP
     if (not t->m->dumpedHeapOnOOM) {
       t->m->dumpedHeapOnOOM = true;
       const char* path = findProperty(t, "avian.heap.dump");
@@ -2566,7 +2562,6 @@ inline void NO_RETURN throw_(Thread* t, GcThrowable* e)
         }
       }
     }
-#endif  // AVIAN_HEAPDUMP
 
     if (AbortOnOutOfMemoryError) {
       fprintf(stderr, "OutOfMemoryError\n");
@@ -2675,7 +2670,12 @@ inline GcMethod* findInterfaceMethod(Thread* t,
                                      GcMethod* method,
                                      GcClass* class_)
 {
-  assertT(t, (class_->vmFlags() & BootstrapFlag) == 0);
+  if (UNLIKELY(class_->vmFlags() & BootstrapFlag)) {
+    PROTECT(t, method);
+    PROTECT(t, class_);
+
+    resolveSystemClass(t, roots(t)->bootLoader(), class_->name());
+  }
 
   GcClass* interface = method->class_();
   GcArray* itable = cast<GcArray>(t, class_->interfaceTable());

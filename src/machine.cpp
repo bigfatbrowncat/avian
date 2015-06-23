@@ -1,4 +1,4 @@
-/* Copyright (c) 2008-2014, Avian Contributors
+/* Copyright (c) 2008-2015, Avian Contributors
 
    Permission to use, copy, modify, and/or distribute this software
    for any purpose with or without fee is hereby granted, provided
@@ -3101,7 +3101,7 @@ void removeString(Thread* t, object o)
 void bootClass(Thread* t,
                Gc::Type type,
                int superType,
-               uint32_t objectMask,
+               uint32_t* objectMask,
                unsigned fixedSize,
                unsigned arrayElementSize,
                unsigned vtableLength)
@@ -3109,15 +3109,20 @@ void bootClass(Thread* t,
   GcClass* super
       = (superType >= 0 ? vm::type(t, static_cast<Gc::Type>(superType)) : 0);
 
+  unsigned maskSize
+      = ceilingDivide(fixedSize + arrayElementSize, 32 * BytesPerWord);
+
   GcIntArray* mask;
   if (objectMask) {
     if (super and super->objectMask()
-        and super->objectMask()->body()[0]
-            == static_cast<int32_t>(objectMask)) {
+        and super->objectMask()->length() == maskSize
+        and memcmp(super->objectMask()->body().begin(),
+                   objectMask,
+                   sizeof(uint32_t) * maskSize) == 0) {
       mask = vm::type(t, static_cast<Gc::Type>(superType))->objectMask();
     } else {
-      mask = makeIntArray(t, 1);
-      mask->body()[0] = objectMask;
+      mask = makeIntArray(t, maskSize);
+      memcpy(mask->body().begin(), objectMask, sizeof(uint32_t) * maskSize);
     }
   } else {
     mask = 0;
@@ -3333,12 +3338,11 @@ void boot(Thread* t)
         = makeMethod(t, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, bootCode);
     PROTECT(t, bootMethod);
 
-#include "type-java-initializations.cpp"
+#    include "type-java-initializations.cpp"
+#    include "type-name-initializations.cpp"
 
-//#ifdef AVIAN_HEAPDUMP
-#include "type-name-initializations.cpp"
-    //#endif
   }
+
 }
 
 class HeapClient : public Heap::Client {
@@ -3805,10 +3809,10 @@ void Thread::init()
 
       void* imagep = m->libraries->resolve(symbolName);
       if (imagep) {
-        uint8_t* (*imageFunction)(unsigned*);
+        uint8_t* (*imageFunction)(size_t*);
         memcpy(&imageFunction, &imagep, BytesPerWord);
 
-        unsigned size;
+        size_t size = 0;
         uint8_t* imageBytes = imageFunction(&size);
         if (lzma) {
 #ifdef AVIAN_USE_LZMA
@@ -3825,7 +3829,7 @@ void Thread::init()
         if (codeFunctionName) {
           void* codep = m->libraries->resolve(codeFunctionName);
           if (codep) {
-            uint8_t* (*codeFunction)(unsigned*);
+            uint8_t* (*codeFunction)(size_t*);
             memcpy(&codeFunction, &codep, BytesPerWord);
 
             code = codeFunction(&size);
@@ -4036,6 +4040,8 @@ void enter(Thread* t, Thread::State s)
 
       t->state = s;
 
+      STORE_LOAD_MEMORY_BARRIER;
+
       if (t->m->exclusive) {
         ACQUIRE_LOCK;
 
@@ -4086,6 +4092,8 @@ void enter(Thread* t, Thread::State s)
       INCREMENT(&(t->m->activeCount), 1);
 
       t->state = s;
+
+      STORE_LOAD_MEMORY_BARRIER;
 
       if (t->m->exclusive) {
         // another thread has entered the exclusive state, so we

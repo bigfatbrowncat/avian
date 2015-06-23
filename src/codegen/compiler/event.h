@@ -1,4 +1,4 @@
-/* Copyright (c) 2008-2014, Avian Contributors
+/* Copyright (c) 2008-2015, Avian Contributors
 
    Permission to use, copy, modify, and/or distribute this software
    for any purpose with or without fee is hereby granted, provided
@@ -89,6 +89,8 @@ class Event {
   LogicalInstruction* logicalInstruction;
   unsigned readCount;
 };
+
+void finishAddRead(Context* c, Value* v, Read* r);
 
 class StubReadPair {
  public:

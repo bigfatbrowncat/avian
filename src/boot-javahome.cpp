@@ -1,4 +1,4 @@
-/* Copyright (c) 2008-2014, Avian Contributors
+/* Copyright (c) 2008-2015, Avian Contributors
 
    Permission to use, copy, modify, and/or distribute this software
    for any purpose with or without fee is hereby granted, provided
@@ -22,7 +22,7 @@ extern "C" {
 extern const uint8_t SYMBOL(start)[];
 extern const uint8_t SYMBOL(end)[];
 
-AVIAN_EXPORT const uint8_t* javahomeJar(unsigned* size)
+AVIAN_EXPORT const uint8_t* javahomeJar(size_t* size)
 {
   *size = SYMBOL(end) - SYMBOL(start);
   return SYMBOL(start);

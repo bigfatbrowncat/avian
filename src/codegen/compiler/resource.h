@@ -1,4 +1,4 @@
-/* Copyright (c) 2008-2014, Avian Contributors
+/* Copyright (c) 2008-2015, Avian Contributors
 
    Permission to use, copy, modify, and/or distribute this software
    for any purpose with or without fee is hereby granted, provided
@@ -48,7 +48,7 @@ class RegisterResource : public Resource {
 
   virtual unsigned toString(Context* c, char* buffer, unsigned bufferSize);
 
-  virtual unsigned index(Context*);
+  virtual Register index(Context*);
 
   void increment(Context*);
 

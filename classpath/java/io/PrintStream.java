@@ -1,4 +1,4 @@
-/* Copyright (c) 2008-2014, Avian Contributors
+/* Copyright (c) 2008-2015, Avian Contributors
 
    Permission to use, copy, modify, and/or distribute this software
    for any purpose with or without fee is hereby granted, provided
@@ -76,6 +76,25 @@ public class PrintStream extends OutputStream {
 
   public void print(char[] s) {
     print(String.valueOf(s));
+  }
+
+  public synchronized void printf(java.util.Locale locale, String format, Object... args) {
+    // should this be cached in an instance variable??
+    final java.util.Formatter formatter = new java.util.Formatter(this);
+    formatter.format(locale, format, args);
+  }
+
+  public synchronized void printf(String format, Object... args) {
+    final java.util.Formatter formatter = new java.util.Formatter(this);
+    formatter.format(format, args);
+  }
+
+  public void format(String format, Object... args) {
+    printf(format, args);
+  }
+
+  public void format(java.util.Locale locale, String format, Object... args) {
+    printf(locale, format, args);
   }
 
   public synchronized void println(String s) {

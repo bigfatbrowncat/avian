@@ -1,4 +1,4 @@
-/* Copyright (c) 2008-2014, Avian Contributors
+/* Copyright (c) 2008-2015, Avian Contributors
 
    Permission to use, copy, modify, and/or distribute this software
    for any purpose with or without fee is hereby granted, provided
@@ -205,7 +205,7 @@ Read* StubRead::next(Context*)
 SingleRead* read(Context* c, const SiteMask& mask, Value* successor)
 {
   assertT(c,
-          (mask.typeMask != 1 << lir::MemoryOperand) or mask.frameIndex >= 0);
+          (mask.typeMask != lir::Operand::MemoryMask) or mask.frameIndex >= 0);
 
   return new (c->zone) SingleRead(mask, successor);
 }

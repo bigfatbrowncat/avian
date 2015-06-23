@@ -1,4 +1,4 @@
-/* Copyright (c) 2008-2014, Avian Contributors
+/* Copyright (c) 2008-2015, Avian Contributors
 
    Permission to use, copy, modify, and/or distribute this software
    for any purpose with or without fee is hereby granted, provided
@@ -611,10 +611,10 @@ void intercept(Thread* t,
   if (m) {
     PROTECT(t, m);
 
-    m->flags() |= ACC_NATIVE;
-
     if (updateRuntimeData) {
       GcMethod* clone = methodClone(t, m);
+
+      m->flags() |= ACC_NATIVE;
 
       // make clone private to prevent vtable updates at compilation
       // time.  Otherwise, our interception might be bypassed by calls
@@ -628,6 +628,8 @@ void intercept(Thread* t,
       GcMethodRuntimeData* runtimeData = getMethodRuntimeData(t, m);
 
       runtimeData->setNative(t, native->as<GcNative>(t));
+    } else {
+      m->flags() |= ACC_NATIVE;
     }
   } else {
     // If we can't find the method, just ignore it, since ProGuard may
@@ -646,7 +648,7 @@ void intercept(Thread* t,
   }
 }
 
-Finder* getFinder(Thread* t, const char* name, unsigned nameLength)
+Finder* getFinder(Thread* t, const char* name, size_t nameLength)
 {
   ACQUIRE(t, t->m->referenceLock);
 
@@ -666,10 +668,10 @@ Finder* getFinder(Thread* t, const char* name, unsigned nameLength)
       reinterpret_cast<const char*>(n->body().begin()));
 
   if (p) {
-    uint8_t* (*function)(unsigned*);
+    uint8_t* (*function)(size_t*);
     memcpy(&function, &p, BytesPerWord);
 
-    unsigned size;
+    size_t size = 0;
     uint8_t* data = function(&size);
     if (data) {
       Finder* f = makeFinder(t->m->system, t->m->heap, data, size);

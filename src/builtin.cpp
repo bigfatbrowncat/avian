@@ -1,4 +1,4 @@
-/* Copyright (c) 2008-2014, Avian Contributors
+/* Copyright (c) 2008-2015, Avian Contributors
 
    Permission to use, copy, modify, and/or distribute this software
    for any purpose with or without fee is hereby granted, provided
@@ -300,8 +300,6 @@ extern "C" AVIAN_EXPORT int64_t JNICALL
   }
 }
 
-#ifdef AVIAN_HEAPDUMP
-
 extern "C" AVIAN_EXPORT void JNICALL
     Avian_avian_Machine_dumpHeap(Thread* t, object, uintptr_t* arguments)
 {
@@ -325,8 +323,6 @@ extern "C" AVIAN_EXPORT void JNICALL
              RUNTIME_ARRAY_BODY(n));
   }
 }
-
-#endif  // AVIAN_HEAPDUMP
 
 extern "C" AVIAN_EXPORT int64_t JNICALL
     Avian_avian_Machine_tryNative(Thread* t, object, uintptr_t* arguments)
