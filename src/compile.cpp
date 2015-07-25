@@ -7030,9 +7030,9 @@ void compile(MyThread* t, Context* context)
 
             c->restoreState(state);
 
-            ir::Type* stackMap = (ir::Type*)malloc(
+            ir::Type* stackMap2 = (ir::Type*)malloc(
                 sizeof(ir::Type) * context->method->code()->maxStack());
-            Frame frame2(&frame, stackMap);
+            Frame frame2(&frame, stackMap2);
 
             unsigned end = duplicatedBaseIp + exceptionHandlerEnd(eh);
             if (exceptionHandlerIp(eh) >= static_cast<unsigned>(start)
@@ -7053,6 +7053,7 @@ void compile(MyThread* t, Context* context)
             context->eventLog.append(PopContextEvent);
 
             eventIndex = calculateFrameMaps(t, context, 0, eventIndex, 0);
+            free(stackMap2);
           }
         }
       }
@@ -8266,11 +8267,11 @@ class CompilationHandlerList {
 
   void dispose(Allocator* allocator)
   {
-    if (this) {
+    if (next) {
       next->dispose(allocator);
-      handler->dispose();
-      allocator->free(this, sizeof(*this));
     }
+    handler->dispose();
+    allocator->free(this, sizeof(*this));
   }
 
   CompilationHandlerList* next;
@@ -8804,7 +8805,9 @@ class MyProcessor : public Processor {
 #endif
     }
 
-    compilationHandlers->dispose(allocator);
+    if(compilationHandlers) {
+      compilationHandlers->dispose(allocator);
+    }
 
     signals.unregisterHandler(SignalRegistrar::SegFault);
     signals.unregisterHandler(SignalRegistrar::DivideByZero);

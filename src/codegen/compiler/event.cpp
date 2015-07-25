@@ -136,16 +136,20 @@ void Event::addRead(Context* c, Value* v, Read* r)
             v,
             v->lastRead,
             this,
-            (this ? this->name() : 0));
+            this->name());
   }
 
+  r->event = this;
+  r->eventNext = this->reads;
+  this->reads = r;
+  ++this->readCount;
+
+  finishAddRead(c, v, r);
+}
+
+void finishAddRead(Context* c, Value* v, Read* r)
+{
   r->value = v;
-  if (this) {
-    r->event = this;
-    r->eventNext = this->reads;
-    this->reads = r;
-    ++this->readCount;
-  }
 
   if (v->lastRead) {
     if (DebugReads) {
@@ -1107,10 +1111,10 @@ class CombineEvent : public Event {
                 "%p %p %d : %p %p %d\n",
                 secondValue,
                 secondValue->source,
-                secondValue->source->type(c),
+                static_cast<int>(secondValue->source->type(c)),
                 secondValue->nextWord,
                 secondValue->nextWord->source,
-                secondValue->nextWord->source->type(c));
+                static_cast<int>(secondValue->nextWord->source->type(c)));
       }
     }
 
