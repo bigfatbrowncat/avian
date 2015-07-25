@@ -1,4 +1,4 @@
-/* Copyright (c) 2008-2014, Avian Contributors
+/* Copyright (c) 2008-2015, Avian Contributors
 
    Permission to use, copy, modify, and/or distribute this software
    for any purpose with or without fee is hereby granted, provided
@@ -441,6 +441,11 @@ class MyClasspath : public Classpath {
     setObjectClass(t, c, type(t, GcJclass::Type));
     c->setName(t, name);
     c->setVmClass(t, class_);
+#ifdef HAVE_JclassClassLoader
+    if (class_->loader() != roots(t)->bootLoader()) {
+      c->setClassLoader(t, class_->loader());
+    }
+#endif
 
     return c;
   }
@@ -1576,6 +1581,10 @@ int64_t JNICALL
 
 ZipFile::Entry* find(ZipFile* file, const char* path, unsigned pathLength)
 {
+  if (pathLength > 0 && path[0] == '/') {
+    ++path;
+    --pathLength;
+  }
   unsigned i = hash(path) & (file->indexSize - 1);
   for (ZipFile::Entry* e = file->index[i]; e; e = e->next) {
     const uint8_t* p = e->start;
@@ -1601,13 +1610,17 @@ int64_t JNICALL
     memcpy(RUNTIME_ARRAY_BODY(p), path->body().begin(), path->length());
     RUNTIME_ARRAY_BODY(p)[path->length()] = 0;
     replace('\\', '/', RUNTIME_ARRAY_BODY(p));
-    if (addSlash) {
+
+    ZipFile::Entry *e = find(file, RUNTIME_ARRAY_BODY(p), path->length());
+
+    if (e == 0 and addSlash and RUNTIME_ARRAY_BODY(p)[path->length()] != '/') {
       RUNTIME_ARRAY_BODY(p)[path->length()] = '/';
       RUNTIME_ARRAY_BODY(p)[path->length() + 1] = 0;
+
+      e = find(file, RUNTIME_ARRAY_BODY(p), path->length());
     }
 
-    return reinterpret_cast<int64_t>(
-        find(file, RUNTIME_ARRAY_BODY(p), path->length()));
+    return reinterpret_cast<int64_t>(e);
   } else {
     int64_t entry
         = cast<GcLong>(t,
@@ -1792,9 +1805,9 @@ void JNICALL freeZipFileEntry(Thread* t, GcMethod* method, uintptr_t* arguments)
         0,
         file->file,
         entry->entry);
-  }
 
-  t->m->heap->free(entry, sizeof(ZipFile::Entry));
+    t->m->heap->free(entry, sizeof(ZipFile::Entry));
+  }
 }
 
 int64_t JNICALL
@@ -2392,20 +2405,20 @@ object makeJmethod(Thread* t,
                      0,
                      0,
                      declaredAnnotations,
-                     clazz,
+                     cast<GcJclass>(t, clazz),
                      slot,
-                     name,
-                     returnType,
+                     cast<GcString>(t, name),
+                     cast<GcJclass>(t, returnType),
                      parameterTypes,
                      exceptionTypes,
                      modifiers,
-                     signature,
+                     cast<GcString>(t, signature),
                      genericInfo,
-                     annotations,
-                     parameterAnnotations,
-                     annotationDefault,
+                     cast<GcByteArray>(t, annotations),
+                     cast<GcByteArray>(t, parameterAnnotations),
+                     cast<GcByteArray>(t, annotationDefault),
                      methodAccessor,
-                     root);
+                     cast<GcJmethod>(t, root));
 }
 
 object makeJconstructor(Thread* t,
@@ -2430,17 +2443,17 @@ object makeJconstructor(Thread* t,
                           0,
                           0,
                           declaredAnnotations,
-                          clazz,
+                          cast<GcJclass>(t, clazz),
                           slot,
                           parameterTypes,
                           exceptionTypes,
                           modifiers,
-                          signature,
+                          cast<GcString>(t, signature),
                           genericInfo,
-                          annotations,
-                          parameterAnnotations,
+                          cast<GcByteArray>(t, annotations),
+                          cast<GcByteArray>(t, parameterAnnotations),
                           constructorAccessor,
-                          root);
+                          cast<GcJconstructor>(t, root));
 }
 #endif  // HAVE_JexecutableHasRealParameterData
 
@@ -4554,6 +4567,12 @@ extern "C" AVIAN_EXPORT jobject JNICALL
   uintptr_t arguments[] = {reinterpret_cast<uintptr_t>(c)};
 
   return reinterpret_cast<jobject>(run(t, jvmGetProtectionDomain, arguments));
+}
+
+extern "C" AVIAN_EXPORT jobject JNICALL
+    EXPORT(JVM_GetResourceLookupCacheURLs)(Thread*, jobject)
+{
+  return 0;
 }
 
 extern "C" AVIAN_EXPORT void JNICALL

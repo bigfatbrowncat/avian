@@ -1,4 +1,4 @@
-/* Copyright (c) 2008-2014, Avian Contributors
+/* Copyright (c) 2008-2015, Avian Contributors
 
    Permission to use, copy, modify, and/or distribute this software
    for any purpose with or without fee is hereby granted, provided
@@ -115,6 +115,8 @@ PlatformInfo::Architecture PlatformInfo::archFromString(const char* arch)
     return Architecture::x86_64;
   } else if (strcmp(arch, "arm") == 0) {
     return Architecture::Arm;
+  } else if (strcmp(arch, "arm64") == 0) {
+    return Architecture::Arm64;
   } else {
     return Architecture::UnknownArch;
   }

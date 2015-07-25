@@ -1,4 +1,4 @@
-/* Copyright (c) 2008-2014, Avian Contributors
+/* Copyright (c) 2008-2015, Avian Contributors
 
    Permission to use, copy, modify, and/or distribute this software
    for any purpose with or without fee is hereby granted, provided
@@ -14,6 +14,8 @@ import java.util.Collection;
 
 public interface ExecutorService extends Executor {
     public void shutdown();
+    
+    public List<Runnable> shutdownNow();
 
     public boolean isShutdown();
 

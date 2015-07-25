@@ -1,4 +1,4 @@
-/* Copyright (c) 2008-2014, Avian Contributors
+/* Copyright (c) 2008-2015, Avian Contributors
 
    Permission to use, copy, modify, and/or distribute this software
    for any purpose with or without fee is hereby granted, provided
@@ -118,6 +118,7 @@ class PlatformInfo {
     x86 = AVIAN_ARCH_X86,
     x86_64 = AVIAN_ARCH_X86_64,
     Arm = AVIAN_ARCH_ARM,
+    Arm64 = AVIAN_ARCH_ARM64,
     UnknownArch = AVIAN_ARCH_UNKNOWN
   };
 

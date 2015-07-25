@@ -1,4 +1,4 @@
-/* Copyright (c) 2008-2014, Avian Contributors
+/* Copyright (c) 2008-2015, Avian Contributors
 
    Permission to use, copy, modify, and/or distribute this software
    for any purpose with or without fee is hereby granted, provided
@@ -116,6 +116,8 @@ typedef intptr_t intptr_alias_t;
 #define ARCH_x86_64
 #elif defined __arm__
 #define ARCH_arm
+#elif defined __aarch64__
+#define ARCH_arm64
 #else
 #error "unsupported architecture"
 #endif
@@ -184,7 +186,7 @@ typedef intptr_t __attribute__((__may_alias__)) intptr_alias_t;
 #error "Unsupported architecture"
 #endif
 #endif
-  
+
 #ifdef PLATFORM_WINDOWS
 #define SO_PREFIX ""
 #else

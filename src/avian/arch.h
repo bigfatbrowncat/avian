@@ -1,4 +1,4 @@
-/* Copyright (c) 2008-2014, Avian Contributors
+/* Copyright (c) 2008-2015, Avian Contributors
 
    Permission to use, copy, modify, and/or distribute this software
    for any purpose with or without fee is hereby granted, provided
@@ -43,7 +43,7 @@ inline void compileTimeMemoryBarrier()
 
 #if (defined ARCH_x86_32) || (defined ARCH_x86_64)
 #include "x86.h"
-#elif defined ARCH_arm
+#elif (defined ARCH_arm) || (defined ARCH_arm64)
 #include "arm.h"
 #else
 #error unsupported architecture

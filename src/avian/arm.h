@@ -1,4 +1,4 @@
-/* Copyright (c) 2008-2014, Avian Contributors
+/* Copyright (c) 2008-2015, Avian Contributors
 
    Permission to use, copy, modify, and/or distribute this software
    for any purpose with or without fee is hereby granted, provided
@@ -34,7 +34,11 @@
 
 #define THREAD_STATE_IP(state) ((state).FIELD(pc))
 #define THREAD_STATE_STACK(state) ((state).FIELD(sp))
+#if (defined __APPLE__) && (defined ARCH_arm64)
+#define THREAD_STATE_THREAD(state) ((state).FIELD(x[19]))
+#else
 #define THREAD_STATE_THREAD(state) ((state).FIELD(r[8]))
+#endif
 #define THREAD_STATE_LINK(state) ((state).FIELD(lr))
 
 #define IP_REGISTER(context) THREAD_STATE_IP(context->uc_mcontext->FIELD(ss))
@@ -53,10 +57,17 @@
 #define THREAD_REGISTER(context) (context->uc_mcontext.cpu.gpr[ARM_REG_IP])
 #define LINK_REGISTER(context) (context->uc_mcontext.cpu.gpr[ARM_REG_LR])
 #else
+#ifdef ARCH_arm
 #define IP_REGISTER(context) (context->uc_mcontext.arm_pc)
 #define STACK_REGISTER(context) (context->uc_mcontext.arm_sp)
 #define THREAD_REGISTER(context) (context->uc_mcontext.arm_ip)
 #define LINK_REGISTER(context) (context->uc_mcontext.arm_lr)
+#else
+#define IP_REGISTER(context) (context->uc_mcontext.pc)
+#define STACK_REGISTER(context) (context->uc_mcontext.sp)
+#define THREAD_REGISTER(context) (context->uc_mcontext.regs[19])
+#define LINK_REGISTER(context) (context->uc_mcontext.regs[30])
+#endif
 #endif
 
 #define VA_LIST(x) (&(x))
@@ -76,7 +87,7 @@ inline void trap()
 #ifdef _MSC_VER
   __debugbreak();
 #else
-  asm("bkpt");
+  asm("brk 0");
 #endif
 }
 
@@ -162,6 +173,8 @@ inline bool atomicCompareAndSwap32(uint32_t* p, uint32_t old, uint32_t new_)
       old, new_, reinterpret_cast<int32_t*>(p));
 #elif(defined __QNX__)
   return old == _smp_cmpxchg(p, old, new_);
+#elif (defined ARCH_arm64)
+  return __sync_bool_compare_and_swap(p, old, new_);
 #else
   int r = __kernel_cmpxchg(
       static_cast<int>(old), static_cast<int>(new_), reinterpret_cast<int*>(p));
@@ -169,9 +182,87 @@ inline bool atomicCompareAndSwap32(uint32_t* p, uint32_t old, uint32_t new_)
 #endif
 }
 
+#ifdef ARCH_arm64
+inline bool atomicCompareAndSwap64(uint64_t* p, uint64_t old, uint64_t new_)
+{
+  return __sync_bool_compare_and_swap(p, old, new_);
+}
+
+inline bool atomicCompareAndSwap(uintptr_t* p, uintptr_t old, uintptr_t new_)
+{
+  return atomicCompareAndSwap64(reinterpret_cast<uint64_t*>(p), old, new_);
+}
+#else
 inline bool atomicCompareAndSwap(uintptr_t* p, uintptr_t old, uintptr_t new_)
 {
   return atomicCompareAndSwap32(reinterpret_cast<uint32_t*>(p), old, new_);
+}
+#endif
+
+#if (defined __APPLE__) && (defined ARCH_arm64)
+const bool AppleARM64 = true;
+#else
+const bool AppleARM64 = false;
+#endif
+
+inline void advance(unsigned* stackIndex,
+                    unsigned* stackSubIndex,
+                    unsigned newStackSubIndex)
+{
+  if (AppleARM64) {
+    if (newStackSubIndex == BytesPerWord) {
+      *stackSubIndex = 0;
+      ++(*stackIndex);
+    } else {
+      *stackSubIndex = newStackSubIndex;
+    }
+  }
+}
+
+inline void push(uint8_t type,
+                 uintptr_t* stack,
+                 unsigned* stackIndex,
+                 unsigned* stackSubIndex,
+                 uintptr_t argument)
+{
+  if (AppleARM64) {
+    // See
+    // https://developer.apple.com/library/ios/documentation/Xcode/Conceptual/iPhoneOSABIReference/Articles/ARM64FunctionCallingConventions.html
+    // for how Apple diverges from the generic ARM64 ABI on iOS.
+    // Specifically, arguments passed on the stack are aligned to
+    // their natural alignment rather than 8.
+    switch (type) {
+    case INT8_TYPE:
+      reinterpret_cast<int8_t*>(stack + *stackIndex)[*stackSubIndex] = argument;
+      advance(stackIndex, stackSubIndex, *stackSubIndex + 1);
+      break;
+
+    case INT16_TYPE:
+      advance(stackIndex, stackSubIndex, pad(*stackSubIndex, 2));
+      reinterpret_cast<int16_t*>(stack + *stackIndex)[*stackSubIndex / 2]
+          = argument;
+      advance(stackIndex, stackSubIndex, *stackSubIndex + 2);
+      break;
+
+    case INT32_TYPE:
+    case FLOAT_TYPE:
+      advance(stackIndex, stackSubIndex, pad(*stackSubIndex, 4));
+      reinterpret_cast<int32_t*>(stack + *stackIndex)[*stackSubIndex / 4]
+          = argument;
+      advance(stackIndex, stackSubIndex, *stackSubIndex + 4);
+      break;
+
+    case POINTER_TYPE:
+      advance(stackIndex, stackSubIndex, pad(*stackSubIndex));
+      stack[(*stackIndex)++] = argument;
+      break;
+
+    default:
+      abort();
+    }
+  } else {
+    stack[(*stackIndex)++] = argument;
+  }
 }
 
 inline uint64_t dynamicCall(void* function,
@@ -181,17 +272,17 @@ inline uint64_t dynamicCall(void* function,
                             unsigned argumentsSize UNUSED,
                             unsigned returnType)
 {
-#ifdef __APPLE__
+#if (defined __APPLE__) || (defined ARCH_arm64)
   const unsigned Alignment = 1;
 #else
   const unsigned Alignment = 2;
 #endif
 
-  const unsigned GprCount = 4;
+  const unsigned GprCount = BytesPerWord;
   uintptr_t gprTable[GprCount];
   unsigned gprIndex = 0;
 
-  const unsigned VfpCount = 16;
+  const unsigned VfpCount = BytesPerWord == 8 ? 8 : 16;
   uintptr_t vfpTable[VfpCount];
   unsigned vfpIndex = 0;
   unsigned vfpBackfillIndex UNUSED = 0;
@@ -201,12 +292,13 @@ inline uint64_t dynamicCall(void* function,
                 (argumentCount * 8)
                 / BytesPerWord);  // is > argumentSize to account for padding
   unsigned stackIndex = 0;
+  unsigned stackSubIndex = 0;
 
   unsigned ai = 0;
   for (unsigned ati = 0; ati < argumentCount; ++ati) {
     switch (argumentTypes[ati]) {
     case DOUBLE_TYPE:
-#if defined(__ARM_PCS_VFP)
+#if (defined __ARM_PCS_VFP) || (defined ARCH_arm64)
     {
       if (vfpIndex + Alignment <= VfpCount) {
         if (vfpIndex % Alignment) {
@@ -217,6 +309,7 @@ inline uint64_t dynamicCall(void* function,
         memcpy(vfpTable + vfpIndex, arguments + ai, 8);
         vfpIndex += 8 / BytesPerWord;
       } else {
+        advance(&stackIndex, &stackSubIndex, pad(stackSubIndex));
         vfpIndex = VfpCount;
         if (stackIndex % Alignment) {
           ++stackIndex;
@@ -235,7 +328,11 @@ inline uint64_t dynamicCall(void* function,
       } else if (vfpIndex < VfpCount) {
         vfpTable[vfpIndex++] = arguments[ai];
       } else {
-        RUNTIME_ARRAY_BODY(stack)[stackIndex++] = arguments[ai];
+        push(argumentTypes[ati],
+             RUNTIME_ARRAY_BODY(stack),
+             &stackIndex,
+             &stackSubIndex,
+             arguments[ai]);
       }
       ++ai;
       break;
@@ -255,6 +352,7 @@ inline uint64_t dynamicCall(void* function,
           gprIndex += 8 / BytesPerWord;
         }
       } else {  // pass argument on stack
+        advance(&stackIndex, &stackSubIndex, pad(stackSubIndex));
         gprIndex = GprCount;
         if (stackIndex % Alignment) {
           ++stackIndex;
@@ -270,7 +368,11 @@ inline uint64_t dynamicCall(void* function,
       if (gprIndex < GprCount) {
         gprTable[gprIndex++] = arguments[ai];
       } else {
-        RUNTIME_ARRAY_BODY(stack)[stackIndex++] = arguments[ai];
+        push(argumentTypes[ati],
+             RUNTIME_ARRAY_BODY(stack),
+             &stackIndex,
+             &stackSubIndex,
+             arguments[ai]);
       }
       ++ai;
     } break;
@@ -286,7 +388,7 @@ inline uint64_t dynamicCall(void* function,
     vfpIndex = VfpCount;
   }
 
-  unsigned stackSize = stackIndex * BytesPerWord + ((stackIndex & 1) << 2);
+  unsigned stackSize = pad(stackIndex * BytesPerWord, 16);
   return vmNativeCall(function,
                       stackSize,
                       RUNTIME_ARRAY_BODY(stack),

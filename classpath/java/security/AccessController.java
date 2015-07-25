@@ -1,4 +1,4 @@
-/* Copyright (c) 2008-2014, Avian Contributors
+/* Copyright (c) 2008-2015, Avian Contributors
 
    Permission to use, copy, modify, and/or distribute this software
    for any purpose with or without fee is hereby granted, provided
@@ -18,7 +18,7 @@ package java.security;
  */
 public class AccessController {
 
-  public static Object doPrivileged (PrivilegedAction action) {
+  public static <T> T doPrivileged (PrivilegedAction<T> action) {
     return action.run();
   }
   
