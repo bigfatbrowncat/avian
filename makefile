@@ -309,9 +309,13 @@ ifneq ($(android),)
 
 	luni-javas := \
 		$(filter-out $(luni-blacklist),$(shell find $(luni-java) -name '*.java'))
-
 	luni-nonjavas := $(shell find $(luni-java) -not -type d -not -name '*.java')
+
+	luni-certs-path = $(android)/libcore/luni/src/main/files/cacerts
+	luni-certs := $(shell find $(luni-certs-path) -not -type d -not -name '*.java')
+
 	luni-copied-nonjavas = $(call noop-files,$(luni-nonjavas),$(luni-java),)
+	luni-copied-certs = $(call noop-files,$(luni-certs),$(luni-certs-path),)
 
 	crypto-java = $(android)/external/conscrypt/src/main/java
 	crypto-javas := $(shell find $(crypto-java) -name '*.java')
@@ -1750,6 +1754,13 @@ $(build)/android.dep: $(luni-javas) $(dalvik-javas) $(libart-javas) \
 		$(build)/android/java/lang/reflect/Proxy*
 	for x in $(luni-copied-nonjavas); \
 		do cp $(luni-java)$${x} $(build)/android$${x} ; \
+	done
+	mkdir -p $(build)/android/java/security/cacerts
+	rm -f $(build)/android/java/security/cacerts/list.txt
+	touch $(build)/android/java/security/cacerts/list.txt
+	for x in $(luni-copied-certs); \
+		do cp $(luni-certs-path)$${x} $(build)/android/java/security/cacerts$${x} ; \
+		echo $${x:1} >> $(build)/android/java/security/cacerts/list.txt ; \
 	done
 	# fix security.properties - get rid of "com.android" in front of classes starting with "org"
 	sed -i -e 's/\(.*=\)com\.android\.\(org\..*\)/\1\2/g' \
