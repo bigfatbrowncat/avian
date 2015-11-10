@@ -224,8 +224,8 @@ ifneq ($(android),)
 		-I$(android)/external/icu4c/i18n \
 		-I$(android)/external/icu4c/common \
 		-I$(android)/external/expat \
-		-I$(android)/external/openssl/include \
-		-I$(android)/external/openssl \
+		-I$(android)/openssl-upstream/include \
+		-I$(android)/openssl-upstream \
 		-I$(android)/libcore/include \
 		-I$(build)/android-src/external/fdlibm \
 		-I$(build)/android-src \
